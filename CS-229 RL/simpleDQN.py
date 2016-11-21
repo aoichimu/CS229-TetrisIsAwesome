@@ -55,7 +55,7 @@ model.add(Activation('linear'))
 
 print(model.summary())
 
-model.compile(sgd(lr=0.2), 'mse')
+model.compile(sgd(lr=0.2,clipvalue=1), 'mse')
 
 # Basic Deque memory (should upgrade later)
 memory = deque()
@@ -122,6 +122,7 @@ while t < 5000:
                 targets[i, aa] = tt
     
     # TODO: clip delta of tt - Q(ss,aa) between 1 and -1, rewrite train_on_batch
+    # DONE: Changed the specification of sgd on the model to clip the values
         loss += model.train_on_batch(qInputs, targets)
     
     print("TIMESTEP", t, "/ Loss ", '%.2E' % loss)
