@@ -6,16 +6,18 @@ Created on Fri Nov 18 15:44:22 2016
 @author: jiamingzeng
 """
 
+import os
 import numpy as np
 import gym
 from collections import deque
 import random
 
 from keras.models import Sequential
-from keras.layers import Dense, Activation, Flatten, Convolution2D
+from keras.layers import Dense, Activation, Flatten
 from keras.optimizers import sgd
 
 ENV_NAME = 'Breakout-ram-v0'
+os.chdir(r'/Users/jiamingzeng/Dropbox/Stanford/CS 229/Project/CS229-TetrisIsAwesome/CS-229 RL')
 
 # Get the environment and extract the number of actions.
 env = gym.make(ENV_NAME)
@@ -26,10 +28,10 @@ state_size = env.observation_space.shape
 
 # Setting values
 gamma = 0.99 # decay rate of past observations
-warmup = 300 # timesteps to observe before training
+warmup = 50000 # timesteps to observe before training
 #EXPLORE = 3000000. # frames over which to anneal epsilon
-epsilon_tf = 0.0001 # final value of epsilon
-epsilon_t0 = 0.1 # starting value of epsilon
+epsilon_tf = 0.1 # final value of epsilon
+epsilon_t0 = 1 # starting value of epsilon
 memory_replay = 50000 # number of previous transitions to remember
 batch_size = 32 # size of minibatch
 #FRAME_PER_ACTION = 1
@@ -43,6 +45,7 @@ model.add(Activation('relu'))
 model.add(Dense(nb_actions))
 model.add(Activation('linear'))
 
+# Example convolution network
 #S = Input(shape=state_size)
 #h = Convolution2D(16, 8, 8, subsample=(4, 4),
 #    border_mode='same', activation='relu')(S)
@@ -55,15 +58,9 @@ model.add(Activation('linear'))
 
 print(model.summary())
 
-model.compile(sgd(lr=0.2,clipvalue=1), 'mse')
+model.compile(sgd(lr=0.2, clipvalue=1), 'mse')
 
-# Basic Deque memory (should upgrade later)
-memory = deque()
-# TODO: Implement Prioritized Experience Replay: 
-#    https://arxiv.org/pdf/1511.05952v4.pdf
-
-# TODO: Future Agent class
-
+################# TRAINING ################
 # output of the model
 # initialize action value function q
 #action_initial = np.zeros([nb_actions])
@@ -73,10 +70,22 @@ state_t0, reward, terminal, info = env.step(action_t0)
 
 epsilon = epsilon_t0
 state_t = state_t0
-#action_t = action_t0
+
 t = 0
-while t < 5000:
+# Basic Deque memory (should upgrade later)
+memory = deque()
+# TODO: Implement Prioritized Experience Replay: 
+#    https://arxiv.org/pdf/1511.05952v4.pdf
+
+# TODO: Future Agent class
+
+while t < 100000:
+    # Initialize outputs
     loss = 0
+    rr = 0
+    max_Q = 0
+    action = 0
+    
     # Reshape state_t
     state_t = state_t.reshape(1, 1, state_t0.shape[0])
     
@@ -93,7 +102,9 @@ while t < 5000:
     state_t1 = state_t1.reshape(1, 1, state_t0.shape[0])
     
     # TODO: check reward clipping to -1, 0, 1
-    # TODO: Add linear anneal for epsilon greedy
+    # Linear appeal: We reduced the epsilon gradually
+    if epsilon > epsilon_tf and t > warmup:
+        epsilon -= (epsilon_t0 - epsilon_tf) / warmup
     
     # Store experience
     memory.append((state_t, action, reward, state_t1, terminal))
@@ -121,17 +132,58 @@ while t < 5000:
             
                 targets[i, aa] = tt
     
-    # TODO: clip delta of tt - Q(ss,aa) between 1 and -1, rewrite train_on_batch
-    # DONE: Changed the specification of sgd on the model to clip the values
         loss += model.train_on_batch(qInputs, targets)
-    
-    print("TIMESTEP", t, "/ Loss ", '%.2E' % loss)
+    if (t % 1000 ==0):
+        print("Time", t, "Reward ", rr, "Loss ", '%.2E' % loss, "Max Q", max_Q, "Action ", action)
     # TODO: quit it when it converges
     t += 1
 
-# Testing model
 model.save_weights('dqn_{}_params.h5f'.format(ENV_NAME), overwrite=True)
-model.tes
+
+################ TESTING ################
+
+# Load model weights
+weights_filename = 'dqn_{}_params.h5f'.format(ENV_NAME)
+model.load_weights(weights_filename)
+
+# Testing model
+episodes = 5
+for eps in range(1, episodes+1):
+    # Start env monitoring
+    exp_name = './Breakout-exp-' + str(eps) + '/'
+    env.monitor.start(exp_name, force = True)
+    env.reset()
+    
+    # Initialize outputs
+    tReward = 0
+    max_Q = 0
+    terminal = False
+    epsilon = epsilon_t0
+    
+    # Initialize game with random action
+    action_t0 = env.action_space.sample()
+    state_t0, reward, terminal, info = env.step(action_t0)
+    state_t = state_t0
+    state_t = state_t.reshape(1, 1, state_t0.shape[0])
+    
+    # Run the game until terminal
+    while not terminal:
+        # Select an action a
+        if random.random() <= epsilon:
+            action = env.action_space.sample()
+        else:
+            q = model.predict(state_t)
+            max_Q = np.argmax(q)
+            action = max_Q
+        
+        # Carry out action and observe new state state_t1 and reward
+        state_t1, reward, terminal, info = env.step(action)
+        state_t1 = state_t1.reshape(1, 1, state_t0.shape[0])
+        tReward += reward
+    
+    print("Eps", eps, "Reward ", tReward, "Max Q", max_Q)
+    
+    env.monitor.close()
 
 # TODO: plot average Q, score per episode
 #agent = Agent(model);
