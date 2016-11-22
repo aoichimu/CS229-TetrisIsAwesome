@@ -78,7 +78,7 @@ model.add(Dense(128,init='uniform'))
 model.add(Activation('relu'))
 model.add(Dense(nb_actions))
 model.add(Activation('linear'))
-
+#
 # Example convolution network
 #S = Input(shape=state_size)
 #h = Convolution2D(16, 8, 8, subsample=(4, 4),
