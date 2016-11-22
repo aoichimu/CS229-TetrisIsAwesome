@@ -14,7 +14,7 @@ import random
 
 from keras.models import Sequential
 from keras.layers import Dense, Activation, Flatten
-from keras.optimizers import sgd, Adam
+from keras.optimizers import 
 
 ENV_NAME = 'Breakout-ram-v0'
 os.chdir(r'/Users/jiamingzeng/Dropbox/Stanford/CS 229/Project/CS229-TetrisIsAwesome/CS-229 RL')
@@ -30,19 +30,21 @@ state_size = env.observation_space.shape
 
 # Setting values
 gamma = 0.99 # decay rate of past observations
-warmup = 1000 # timesteps to observe before training
+warmup = 10000 # timesteps to observe before training
 explore = 1000 # frames over which to anneal epsilon
-epsilon_tf = 0.1 # final value of epsilon
-epsilon_t0 = 1 # starting value of epsilon
+epsilon_tf = 0.01 # final value of epsilon
+epsilon_t0 = 0.1 # starting value of epsilon
 memory_replay = warmup # number of previous transitions to remember
 batch_size = 32 # size of minibatch
-nb_steps = 100000
+nb_steps = 1000000
 #FRAME_PER_ACTION = 1
 
 # Initialize model 
 
 model = Sequential()
 model.add(Flatten(input_shape=(1,) + env.observation_space.shape))
+model.add(Dense(128))
+model.add(Activation('relu'))
 model.add(Dense(128))
 model.add(Activation('relu'))
 model.add(Dense(nb_actions))
@@ -61,8 +63,8 @@ model.add(Activation('linear'))
 
 print(model.summary())
 
-#model.compile(sgd(lr=0.2, clipvalue=1), 'mse')
-model.compile(Adam(lr=0.1, clipvalue=1), 'mse')
+#model.compile(sgd(lr=0.2), 'mse')
+model.compile(Adam(lr=0.2, clipvalue=1), 'mse')
 
 ################# TRAINING ################
 
@@ -149,7 +151,7 @@ while t < nb_steps:
     
     # Save weights and output periodically
     if (t % 1000 ==0):
-        print("Time", t, "Reward ", rr, "Loss ", '%.2E' % loss, "Max Q", max_Q, "Action ", action)
+        print("Time", t, "Loss ", '%.2E' % loss, "Max Q", max_Q, "Action ", action)
         model.save_weights('dqn_{}_params.h5f'.format(ENV_NAME), overwrite=True)
 
 # Close files that were written
