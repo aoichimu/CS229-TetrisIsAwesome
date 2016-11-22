@@ -59,7 +59,7 @@ class Memory(object):
         
     def randSample(self, batch_size): #returns an array 
         x = sample_batch_ind(self.mem.getLength(), batch_size)
-        y = np.zeros((batch_size, 5))
+        y = np.zeros((batch_size, 5), dtype = object)
         for i in range(0,len(x)):
             y[i] = self.mem[x[i]]
         return y
