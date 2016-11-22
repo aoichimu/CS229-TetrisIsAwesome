@@ -18,7 +18,7 @@ from keras.optimizers import RMSprop, sgd, Adam
 
 ENV_NAME = 'Breakout-ram-v0'
 #os.chdir('/home/edgard/Desktop/CS229-TetrisIsAwesome/CS-229 RL')
-os.chdir('/Users/jiamingzeng/Dropbox/Stanford/CS 229/Project/CS229-TetrisIsAwesome/CS-229 RL')
+os.chdir('/home/edgard/Desktop/CS229-TetrisIsAwesome/CS-229 RL')
 
 # Get the environment and extract the number of actions.
 env = gym.make(ENV_NAME)
@@ -37,6 +37,8 @@ def _step(a):
         reward += env.ale.act(action)
     ob = env._get_obs()
     done = env.ale.game_over() or (mode == 'train' and lives_before != env.ale.lives())
+    if done:
+    	print('DONE', "Action ", action)
     return ob, reward, done, {}
 env._step = _step
 
@@ -58,12 +60,12 @@ gamma = 0.99 # decay rate of past observations
 warmup = 10000 # timesteps to observe before training
 explore = 1000 # frames over which to anneal epsilon
 epsilon_tf = 0.01 # final value of epsilon
-epsilon_t0 = 0.1 # starting value of epsilon
+epsilon_t0 = 1 # starting value of epsilon
 memory_replay = warmup # number of previous transitions to remember
 batch_size = 32 # size of minibatch
 nb_steps = 1000000
 update_target = 1000
-train_visualize = False
+train_visualize = True
 #FRAME_PER_ACTION = 1
 
 # Initialize model 
@@ -98,6 +100,7 @@ target_model.compile(Adam(lr=0.1), 'mse')
 #model.compile(sgd(lr=0.2, clipvalue=1), 'mse')
 #model.compile(Adam(lr=0.001, clipvalue=1), 'mse')
 model.compile(Adam(lr=0.1), 'mse')
+target_model.set_weights(model.get_weights())
 
 ################# TRAINING ################
 
@@ -141,10 +144,10 @@ while t < nb_steps:
     # Carry out action and observe new state state_t1 and reward
     if train_visualize:
         env.render()
-    state_t1, reward, terminal, info = env.step(action)
+    state_t1, reward, terminal, info = env.step(action) # TODO remember to set action
     state_t1 = state_t1.reshape(1, 1, state_t0.shape[0])
-    if terminal:
-        env.reset()
+    #if terminal:
+    #    env.reset()
     
     # TODO: check reward clipping to -1, 0, 1
     # Linear anneal: We reduced the epsilon gradually
@@ -205,7 +208,7 @@ model.load_weights(weights_filename)
 
 # Testing model
 episodes = 5
-model='test'
+mode='test'
 for eps in range(1, episodes+1):
     # Start env monitoring
     exp_name = './Breakout-exp-' + str(eps) + '/'
