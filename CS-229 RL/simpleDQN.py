@@ -17,13 +17,27 @@ from keras.layers import Dense, Activation, Flatten
 from keras.optimizers import sgd, Adam
 
 ENV_NAME = 'Breakout-ram-v0'
-os.chdir(r'/Users/jiamingzeng/Dropbox/Stanford/CS 229/Project/CS229-TetrisIsAwesome/CS-229 RL')
+os.chdir('/home/edgard/Desktop/CS229-TetrisIsAwesome/CS-229 RL')
 
 # Get the environment and extract the number of actions.
 env = gym.make(ENV_NAME)
 np.random.seed(123)
 env.seed(123)
 env.reset()
+
+# Sets the frameskip and a Game Over signal to train and if testing, it plays the game normally.
+mode='train'
+def _step(a):
+    reward = 0.0
+    action = env._action_set[a]
+    lives_before = env.ale.lives()
+    for _ in range(4):
+        reward += env.ale.act(action)
+    ob = env._get_obs()
+    done = env.ale.game_over() or (mode == 'train' and lives_before != env.ale.lives())
+    return ob, reward, done, {}
+env._step = _step
+
 
 nb_actions = env.action_space.n
 state_size = env.observation_space.shape
@@ -62,7 +76,7 @@ model.add(Activation('linear'))
 print(model.summary())
 
 #model.compile(sgd(lr=0.2, clipvalue=1), 'mse')
-model.compile(Adam(lr=0.1, clipvalue=1), 'mse')
+model.compile(Adam(lr=0.001, clipvalue=1), 'mse')
 
 ################# TRAINING ################
 
@@ -165,6 +179,7 @@ model.load_weights(weights_filename)
 
 # Testing model
 episodes = 5
+model='test'
 for eps in range(1, episodes+1):
     # Start env monitoring
     exp_name = './Breakout-exp-' + str(eps) + '/'
