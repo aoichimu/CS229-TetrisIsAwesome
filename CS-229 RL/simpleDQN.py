@@ -11,14 +11,14 @@ import numpy as np
 import gym
 from collections import deque
 import random
-
+from simpleMemory import Memory, RingBuffer
 from keras.models import Sequential, model_from_config
 from keras.layers import Dense, Activation, Flatten
 from keras.optimizers import RMSprop, sgd, Adam
 
 ENV_NAME = 'Breakout-ram-v0'
 #os.chdir('/home/edgard/Desktop/CS229-TetrisIsAwesome/CS-229 RL')
-os.chdir('/Users/jiamingzeng/Dropbox/Stanford/CS 229/Project/CS229-TetrisIsAwesome/CS-229 RL')
+os.chdir('/home/edgard/Desktop/CS229-TetrisIsAwesome/CS-229 RL')
 
 # Get the environment and extract the number of actions.
 env = gym.make(ENV_NAME)
@@ -37,6 +37,8 @@ def _step(a):
         reward += env.ale.act(action)
     ob = env._get_obs()
     done = env.ale.game_over() or (mode == 'train' and lives_before != env.ale.lives())
+    #if done:
+    #	print('DONE', "Action ", action)
     return ob, reward, done, {}
 env._step = _step
 
@@ -56,10 +58,10 @@ def clone_model(model, custom_objects={}):
 ################# MODEL INITIALIZATION AND PARAMETERS ################
 gamma = 0.99 # decay rate of past observations
 warmup = 10000 # timesteps to observe before training
-explore = 1000 # frames over which to anneal epsilon
+explore = 10000 # frames over which to anneal epsilon
 epsilon_tf = 0.01 # final value of epsilon
-epsilon_t0 = 0.1 # starting value of epsilon
-memory_replay = warmup # number of previous transitions to remember
+epsilon_t0 = 1 # starting value of epsilon
+memory_replay = 100000 # number of previous transitions to remember
 batch_size = 32 # size of minibatch
 nb_steps = 1000000
 update_target = 1000
@@ -76,7 +78,7 @@ model.add(Dense(128,init='uniform'))
 model.add(Activation('relu'))
 model.add(Dense(nb_actions))
 model.add(Activation('linear'))
-
+#
 # Example convolution network
 #S = Input(shape=state_size)
 #h = Convolution2D(16, 8, 8, subsample=(4, 4),
@@ -97,7 +99,7 @@ target_model.compile(Adam(lr=0.1), 'mse')
 
 #model.compile(sgd(lr=0.2, clipvalue=1), 'mse')
 #model.compile(Adam(lr=0.001, clipvalue=1), 'mse')
-model.compile(Adam(lr=0.1), 'mse')
+model.compile(Adam(lr=0.00025), 'mse')
 
 ################# TRAINING ################
 
@@ -113,7 +115,7 @@ state_t = state_t0
 
 t = 0
 # Basic Deque memory (should upgrade later)
-memory = deque()
+memory = Memory(memorySize=memory_replay)
 # TODO: Implement Prioritized Experience Replay: 
 #    https://arxiv.org/pdf/1511.05952v4.pdf
 
@@ -141,7 +143,7 @@ while t < nb_steps:
     # Carry out action and observe new state state_t1 and reward
     if train_visualize:
         env.render()
-    state_t1, reward, terminal, info = env.step(action)
+    state_t1, reward, terminal, info = env.step(action) # TODO remember to set action
     state_t1 = state_t1.reshape(1, 1, state_t0.shape[0])
     if terminal:
         env.reset()
@@ -152,38 +154,39 @@ while t < nb_steps:
         epsilon -= (epsilon_t0 - epsilon_tf) / explore
     
     # Store experience
-    memory.append((state_t, action, reward, state_t1, terminal))
-    if len(memory) > memory_replay:
-        memory.popleft()
+    memory.append(state_t, action, reward, state_t1, terminal)
             
     # Sample random transitions from memory
     qInputs = np.zeros((batch_size, state_t.shape[1], state_t.shape[2]))
     targets = np.zeros((batch_size, nb_actions))
     
     if t > warmup:
-        minibatch = random.sample(memory, batch_size)
+    	
+        minibatch = memory.randSample(batch_size)
     
         for i in range(0, len(minibatch)):
             ss, aa, rr, ss_t1, terminal = minibatch[i]
             targets[i] = model.predict(ss)
+            max_Q2=np.max(targets[i])
             qInputs[i:i+1] = ss
 
             if terminal:
                 targets[i, aa] = rr
             else:
-                qTarget = model.predict(ss_t1)
+                qTarget = target_model.predict(ss_t1)
                 max_Q = np.max(qTarget)
+                #print("Max_Q updated t=",t)
                 tt = rr + gamma*max_Q
             
                 targets[i, aa] = tt
     
         loss += model.train_on_batch(qInputs, targets)
         all_loss.write('\n' + str(loss))
-        all_Q.write('\n' + str(max_Q))
+        all_Q.write(str(max_Q)+ '\t' + str(max_Q2)+'\n')
         
-        # Update target model
-        if (t % update_target == 0):
-            target_model.set_weights(model.get_weights())
+    # Update target model
+    if (t % update_target == 0):
+        target_model.set_weights(model.get_weights())
     t += 1
     state_t = state_t1
     
@@ -205,7 +208,7 @@ model.load_weights(weights_filename)
 
 # Testing model
 episodes = 5
-model='test'
+mode='test'
 for eps in range(1, episodes+1):
     # Start env monitoring
     exp_name = './Breakout-exp-' + str(eps) + '/'
