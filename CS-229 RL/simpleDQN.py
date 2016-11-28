@@ -18,7 +18,7 @@ from keras.optimizers import RMSprop, sgd, Adam
 
 ENV_NAME = 'Breakout-ram-v0'
 #os.chdir('/home/edgard/Desktop/CS229-TetrisIsAwesome/CS-229 RL')
-os.chdir('/home/edgard/Desktop/CS229-TetrisIsAwesome/CS-229 RL')
+#os.chdir('/home/jennie/Desktop/CS229-TetrisIsAwesome/MaTris-master/')
 
 # Get the environment and extract the number of actions.
 env = gym.make(ENV_NAME)
@@ -57,15 +57,18 @@ def clone_model(model, custom_objects={}):
     
 ################# MODEL INITIALIZATION AND PARAMETERS ################
 gamma = 0.99 # decay rate of past observations
-warmup = 10000 # timesteps to observe before training
-explore = 10000 # frames over which to anneal epsilon
-epsilon_tf = 0.01 # final value of epsilon
+warmup = 500000 # timesteps to observe before training
+explore = 1000000 # frames over which to anneal epsilon
+epsilon_tf = 0.1 # final value of epsilon
 epsilon_t0 = 1 # starting value of epsilon
-memory_replay = 100000 # number of previous transitions to remember
+epsilon_test=0.005 #epsilon for testing purposes
+memory_replay = 1000000 # number of previous transitions to remember
 batch_size = 32 # size of minibatch
-nb_steps = 1000000
-update_target = 1000
+nb_steps = 50000000
+update_target = 10000
 train_visualize = False
+resume=True
+stepresume=960000
 #FRAME_PER_ACTION = 1
 
 # Initialize model 
@@ -99,7 +102,13 @@ target_model.compile(Adam(lr=0.1), 'mse')
 
 #model.compile(sgd(lr=0.2, clipvalue=1), 'mse')
 #model.compile(Adam(lr=0.001, clipvalue=1), 'mse')
-model.compile(Adam(lr=0.00025), 'mse')
+model.compile(Adam(lr=0.00025,clipvalue=1), 'mse')
+if resume:
+    print("Resuming training \n")
+    weights_filename = 'dqn_{}_params.h5f'.format(ENV_NAME)
+    model.load_weights(weights_filename)
+    target_model.load_weights(weights_filename)
+    epsilon = epsilon_t0-(epsilon_tf-epsilon_t0)*stepresume/explore
 
 ################# TRAINING ################
 
@@ -120,8 +129,8 @@ memory = Memory(memorySize=memory_replay)
 #    https://arxiv.org/pdf/1511.05952v4.pdf
 
 # TODO: Future Agent class
-all_Q = open("maxQ.txt", "w")
-all_loss = open("loss.txt", "w")
+#all_Q = open("maxQ.txt", "w")
+#all_loss = open("loss.txt", "w")
 
 while t < nb_steps:
     # Initialize outputs
@@ -167,7 +176,7 @@ while t < nb_steps:
         for i in range(0, len(minibatch)):
             ss, aa, rr, ss_t1, terminal = minibatch[i]
             targets[i] = model.predict(ss)
-            max_Q2=np.max(targets[i])
+            #max_Q2=np.max(targets[i])
             qInputs[i:i+1] = ss
 
             if terminal:
@@ -181,8 +190,8 @@ while t < nb_steps:
                 targets[i, aa] = tt
     
         loss += model.train_on_batch(qInputs, targets)
-        all_loss.write('\n' + str(loss))
-        all_Q.write(str(max_Q)+ '\t' + str(max_Q2)+'\n')
+        #all_loss.write('\n' + str(loss))
+        #all_Q.write(str(max_Q)+ '\t' + str(max_Q2)+'\n')
         
     # Update target model
     if (t % update_target == 0):
@@ -191,19 +200,19 @@ while t < nb_steps:
     state_t = state_t1
     
     # Save weights and output periodically
-    if (t % 1000 == 0):
+    if (t % 5000 == 0):
         print("Time", t, "Loss ", '%.2E' % loss, "Max Q", max_Q, "Action ", action)
-        model.save_weights('dqn_{}_params.h5f'.format(ENV_NAME), overwrite=True)
+        model.save_weights('dqn_{}_paramsOvernight.h5f'.format(ENV_NAME), overwrite=True)
 
 # Close files that were written
-all_loss.close()
-all_Q.close()        
-################ PLOTTING ################
+#all_loss.close()
+#all_Q.close()        
+############### PLOTTING ################
 
 ################ TESTING ################
 
 # Load model weights
-weights_filename = 'dqn_{}_params.h5f'.format(ENV_NAME)
+weights_filename = 'dqn_{}_paramsOvernight.h5f'.format(ENV_NAME)
 model.load_weights(weights_filename)
 
 # Testing model
@@ -219,7 +228,7 @@ for eps in range(1, episodes+1):
     tReward = 0
     max_Q = 0
     terminal = False
-    epsilon = epsilon_t0
+    epsilon = epsilon_test
     
     # Initialize game with random action
     action_t0 = env.action_space.sample()
@@ -234,12 +243,12 @@ for eps in range(1, episodes+1):
             action = env.action_space.sample()
         else:
             q = model.predict(state_t)
-            max_Q = np.argmax(q)
-            action = max_Q
+            max_Q = np.max(q)
+            action = np.argmax(q)
         
         # Carry out action and observe new state state_t1 and reward
-        state_t1, reward, terminal, info = env.step(action)
-        state_t1 = state_t1.reshape(1, 1, state_t0.shape[0])
+        state_t, reward, terminal, info = env.step(action)
+        state_t = state_t.reshape(1, 1, state_t0.shape[0])
         tReward += reward
     
     print("Eps", eps, "Reward ", tReward, "Max Q", max_Q)
