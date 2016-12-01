@@ -9,6 +9,7 @@ from simpleMemory import Memory, RingBuffer
 from keras.models import Sequential, model_from_config
 from keras.layers import Dense, Activation, Flatten
 from keras.optimizers import RMSprop, sgd, Adam
+from keras import initializations
 
 ENV_NAME = 'Breakout-ram-v0'
 #os.chdir('/home/edgard/Desktop/CS229-TetrisIsAwesome/CS-229 RL')
@@ -61,22 +62,22 @@ batch_size = 32 # size of minibatch
 nb_steps = 50000000
 update_target = 10000
 train_visualize = False
-
 resume=False
 stepresume=960000
-nodesperlayer=16
-
 #FRAME_PER_ACTION = 1
 
 # Initialize model 
+def my_init(shape, name=None):
+    return initializations.normal(shape, scale=0.01, name=name)
 
 model = Sequential()
 model.add(Flatten(input_shape=(1,) + env.observation_space.shape))
-model.add(Dense(nodesperlayer,init='uniform'))
+#model.add(Dense(128,init=lambda shape, name: initializations.normal(shape, scale=0.01, name=name)))
+model.add(Dense(128,init='normal'))
 model.add(Activation('relu'))
-model.add(Dense(nodesperlayer,init='uniform'))
+model.add(Dense(128,init='normal'))
 model.add(Activation('relu'))
-model.add(Dense(nodesperlayer,init='uniform'))
+model.add(Dense(128,init='normal'))
 model.add(Activation('relu'))
 model.add(Dense(nb_actions))
 model.add(Activation('linear'))
