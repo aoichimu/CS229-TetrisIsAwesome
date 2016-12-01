@@ -11,6 +11,7 @@ from simpleMemory import Memory, RingBuffer
 from keras.models import Sequential, model_from_config
 from keras.layers import Dense, Activation, Flatten
 from keras.optimizers import RMSprop, sgd, Adam
+from keras import initializations
 
 ENV_NAME = 'Breakout-ram-v0'
 #os.chdir('/home/edgard/Desktop/CS229-TetrisIsAwesome/CS-229 RL')
@@ -99,11 +100,14 @@ if linearNet:
 else: 
     model = Sequential()
     model.add(Flatten(input_shape=(1,) + env.observation_space.shape))
-    model.add(Dense(nodesperlayer,init='uniform'))
+    model.add(Dense(
+        nodesperlayer,init=lambda shape, name: initializations.normal(shape, scale=0.01, name=name)))
     model.add(Activation('relu'))
-    model.add(Dense(nodesperlayer,init='uniform'))
+    model.add(Dense(
+        nodesperlayer,init=lambda shape, name: initializations.normal(shape, scale=0.01, name=name)))
     model.add(Activation('relu'))
-    model.add(Dense(nodesperlayer,init='uniform'))
+    model.add(Dense(
+        nodesperlayer,init=lambda shape, name: initializations.normal(shape, scale=0.01, name=name)))
     model.add(Activation('relu'))
     model.add(Dense(nb_actions))
     model.add(Activation('linear'))
@@ -111,8 +115,8 @@ else:
 print(model.summary())
 
 # Initialize target model
-target_model = clone_model(model)
-target_model.compile(Adam(lr=0.1), 'mse')
+#target_model = clone_model(model)
+#target_model.compile(Adam(lr=0.1), 'mse')
 
 #model.compile(sgd(lr=0.2, clipvalue=1), 'mse')
 #model.compile(Adam(lr=0.001, clipvalue=1), 'mse')
@@ -120,9 +124,9 @@ model.compile(Adam(lr=1e-6,clipvalue=1), 'mse')
 
 if resume:
     print("Resuming training \n")
-    weights_filename = 'dqn_{}_params.h5f'.format(ENV_NAME)
+    weights_filename = 'dqn_{}_paramsNormal.h5f'.format(ENV_NAME)
     model.load_weights(weights_filename)
-    target_model.load_weights(weights_filename)
+    #target_model.load_weights(weights_filename)
     epsilon = epsilon_t0-(epsilon_tf-epsilon_t0)*stepresume/explore
 
 ################# TRAINING ################
@@ -153,6 +157,7 @@ if mode == 'train':
         rr = 0
         action = 0
         max_Q = 0
+        avg_Q = 0
         
         # Reshape state_t
         state_t = state_t.reshape(1, 1, state_t0.shape[0])
@@ -167,7 +172,7 @@ if mode == 'train':
         # Carry out action and observe new state state_t1 and reward
         if train_visualize:
             env.render()
-        state_t1, reward, terminal, info = env.step(action) # TODO remember to set action
+        state_t1, reward, terminal, info = env.step(action)
         state_t1 = state_t1.reshape(1, 1, state_t0.shape[0])
         if terminal:
             env.reset()
@@ -197,7 +202,8 @@ if mode == 'train':
                 if terminal:
                     targets[i, aa] = rr
                 else:
-                    qTarget = target_model.predict(ss_t1)
+                    #qTarget = target_model.predict(ss_t1)
+                    qTarget = model.predict(ss_t1)
                     max_Q = np.max(qTarget)
                     avg_Q = np.mean(qTarget)
                     #print("Max_Q updated t=",t)
@@ -210,8 +216,9 @@ if mode == 'train':
             #all_Q.write(str(max_Q)+ '\t' + str(max_Q2)+'\n')
             
         # Update target model
-        if (t % update_target == 0):
-            target_model.set_weights(model.get_weights())
+##        if (t % update_target == 0):
+##            target_model.set_weights(model.get_weights())
+        
         t += 1
         state_t = state_t1
         
@@ -219,7 +226,7 @@ if mode == 'train':
         if (t % 5000 == 0):
             print("Time", t, "Loss ", '%.2E' % loss, "Max Q", max_Q,
                   "Avg Q", avg_Q, "Action ", action)
-            model.save_weights('dqn_{0}_params_{1}_{2}_{3}.h5f'.format(
+            model.save_weights('dqn_{0}_paramsNormal_{1}_{2}_{3}.h5f'.format(
                 ENV_NAME, frameskip, update_target, linearNet), overwrite=True)
 
 # Close files that were written
@@ -230,7 +237,7 @@ if mode == 'train':
 ################ TESTING ################
 if mode == 'test':
     # Load model weights
-    weights_filename = 'dqn_{0}_params_{1}_{2}_{3}.h5f'.format(
+    weights_filename = 'dqn_{0}_paramsNormal_{1}_{2}_{3}.h5f'.format(
                     ENV_NAME, frameskip, update_target, linearNet)
     model.load_weights(weights_filename)
 
@@ -287,4 +294,3 @@ if mode == 'test':
     #    if terminal:
     #        env.reset()
     #    return [state_t, reward, terminal, info]
-
