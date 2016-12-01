@@ -67,17 +67,22 @@ batch_size = 32 # size of minibatch
 nb_steps = 50000000
 update_target = 10000
 train_visualize = False
+
 resume=False
 stepresume=960000
+nodesperlayer=16
+
 #FRAME_PER_ACTION = 1
 
 # Initialize model 
 
 model = Sequential()
 model.add(Flatten(input_shape=(1,) + env.observation_space.shape))
-model.add(Dense(128,init='uniform'))
+model.add(Dense(nodesperlayer,init='uniform'))
 model.add(Activation('relu'))
-model.add(Dense(128,init='uniform'))
+model.add(Dense(nodesperlayer,init='uniform'))
+model.add(Activation('relu'))
+model.add(Dense(nodesperlayer,init='uniform'))
 model.add(Activation('relu'))
 model.add(Dense(nb_actions))
 model.add(Activation('linear'))
