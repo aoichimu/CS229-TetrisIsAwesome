@@ -13,8 +13,11 @@
 #$ -m ae
 #
 ##Computer parameters 
-
-CS229_dir="/farmshare/user_data/jiaming/CS229-TetrisIsAwesome/CS-229\ RL/"
+CS229_dir="/farmshare/user_data/jiaming/CS229-TetrisIsAwesome/CS-229-RL/"
 cd ${CS229_dir}
 
-python "simpleDQN.py"
+#echo ${frameskip}
+#echo ${update}
+#echo ${linearNet}
+
+python simpleDQN.py -fs ${frameskip} -update ${update} -net ${linearNet}
