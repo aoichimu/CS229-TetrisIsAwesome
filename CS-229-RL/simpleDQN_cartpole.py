@@ -79,11 +79,11 @@ nodesperlayer=16
 
 model = Sequential()
 model.add(Flatten(input_shape=(1,) + env.observation_space.shape))
-model.add(Dense(nodesperlayer,init='uniform'))
+model.add(Dense(nodesperlayer,init='normal'))
 model.add(Activation('relu'))
-model.add(Dense(nodesperlayer,init='uniform'))
+model.add(Dense(nodesperlayer,init='normal'))
 model.add(Activation('relu'))
-model.add(Dense(nodesperlayer,init='uniform'))
+model.add(Dense(nodesperlayer,init='normal'))
 model.add(Activation('relu'))
 model.add(Dense(nb_actions))
 model.add(Activation('linear'))
@@ -208,7 +208,7 @@ while t < nb_steps:
     # Save weights and output periodically
     if (t % update_target == 0):
         print("Time", t, "Loss ", '%.2E' % loss, "Max Q", max_Q, "Action ", action)
-        model.save_weights('dqn_{}_params.h5f'.format(ENV_NAME), overwrite=True)
+        model.save_weights('dqn_{}_params_normal.h5f'.format(ENV_NAME), overwrite=True)
 
 # Close files that were written
 #all_loss.close()

@@ -79,11 +79,11 @@ nodesperlayer=16
 
 model = Sequential()
 model.add(Flatten(input_shape=(1,) + env.observation_space.shape))
-model.add(Dense(nodesperlayer,init='uniform'))
+model.add(Dense(nodesperlayer,init='normal'))
 model.add(Activation('relu'))
-model.add(Dense(nodesperlayer,init='uniform'))
+model.add(Dense(nodesperlayer,init='normal'))
 model.add(Activation('relu'))
-model.add(Dense(nodesperlayer,init='uniform'))
+model.add(Dense(nodesperlayer,init='normal'))
 model.add(Activation('relu'))
 model.add(Dense(nb_actions))
 model.add(Activation('linear'))
@@ -218,7 +218,7 @@ if resume:
 ################ TESTING ################
 
 # Load model weights
-weights_filename = 'dqn_{}_params.h5f'.format(ENV_NAME)
+weights_filename = 'dqn_{}_params_normal.h5f'.format(ENV_NAME)
 model.load_weights(weights_filename)
 
 # Testing model
@@ -226,7 +226,7 @@ episodes = 2
 mode='test'
 for eps in range(1, episodes+1):
     # Start env monitoring
-    exp_name = './CartPole-exp-' + str(eps) + '/'
+    exp_name = './CartPole-exp-normal' + str(eps) + '/'
     env.monitor.start(exp_name, force = True)
     env.reset()
     
