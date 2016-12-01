@@ -62,36 +62,37 @@ stepresume=960000
 nodesperlayer=128
 
 # Variables to set frameskip, target model, network
+user_inputs = True
 parser = argparse.ArgumentParser(description='ADD YOUR DESCRIPTION HERE')
 parser.add_argument('-fs','--frameskip', help='Boolean for frameskip',
-                    type = bool, required=False)
+                    required=False)
 parser.add_argument('-update','--update', help='Number of steps to update target',
                     type = int, required=False)
 parser.add_argument('-net','--linearNet', help='Boolean for linear network',
-                    type = bool, required=False)
+                    required=False)
 args = parser.parse_args()
 print(args)
 
-if len(vars(args)) > 1:
+if user_inputs:
     frameskip = args.frameskip
     update_target = args.update
     linearNet = args.linearNet
 else: 
     update_target = 10000
-    frameskip = True
-    linearNet = False
+    frameskip = 'T'
+    linearNet = 'F'
 
 #FRAME_PER_ACTION = 1
     
 # Changing model structure
-if frameskip:
+if frameskip == 'T':
     env._step = _step
 nb_actions = env.action_space.n
 state_size = env.observation_space.shape
 
 # Initialize model 
 
-if linearNet:
+if linearNet == 'T':
     model = Sequential()
     model.add(Flatten(input_shape=(1,) + env.observation_space.shape))
     model.add(Dense(nb_actions))
