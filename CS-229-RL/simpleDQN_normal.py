@@ -202,7 +202,7 @@ while t < nb_steps:
     # Save weights and output periodically
     if (t % 5000 == 0):
         print("Time", t, "Loss ", '%.2E' % loss, "Max Q", max_Q, "Action ", action)
-        model.save_weights('dqn_{}_paramsOvernight.h5f'.format(ENV_NAME), overwrite=True)
+        model.save_weights('dqn_{}_paramsNormal.h5f'.format(ENV_NAME), overwrite=True)
 
 # Close files that were written
 #all_loss.close()
@@ -212,7 +212,7 @@ while t < nb_steps:
 ################ TESTING ################
 
 # Load model weights
-weights_filename = 'dqn_{}_paramsOvernight.h5f'.format(ENV_NAME)
+weights_filename = 'dqn_{}_paramsNormal.h5f'.format(ENV_NAME)
 model.load_weights(weights_filename)
 
 # Testing model
@@ -220,7 +220,7 @@ episodes = 5
 mode='test'
 for eps in range(1, episodes+1):
     # Start env monitoring
-    exp_name = './Breakout-exp-' + str(eps) + '/'
+    exp_name = './Breakout-exp-normal-' + str(eps) + '/'
     env.monitor.start(exp_name, force = True)
     env.reset()
     
