@@ -1,0 +1,26 @@
+- try with just one layer 
+	- Just have a flatten and dense layer to actions
+- plot average Q
+	- q(s,a) for every a, take the average
+
+Series of Experiments: 
+-Effectiveness of a target network (including not having a target network)
+-Complexity of model architecture
+  -linear
+  -multiple layers
+-Frame-skipping (with and without)
+-Stacking the information of the frames
+-Image inputs vs RAM inputs
+
+Asynchronous? 
+
+- plot average Q
+
+Todo: 
+image inputs and stacking
+
+Params:
+Network complexity: linear, 3 layers, normal dist (0.01)
+Initialization: uniform
+Target model: N, 1000, 5000
+Frame-skipping: Y, N
