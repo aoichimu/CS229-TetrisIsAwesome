@@ -57,7 +57,7 @@ def clone_model(model, custom_objects={}):
     
 ################# MODEL INITIALIZATION AND PARAMETERS ################
 gamma = 0.99 # decay rate of past observations
-warmup = 500000 # timesteps to observe before training
+warmup = 50000 # timesteps to observe before training
 explore = 1000000 # frames over which to anneal epsilon
 epsilon_tf = 0.1 # final value of epsilon
 epsilon_t0 = 1 # starting value of epsilon
@@ -67,7 +67,7 @@ batch_size = 32 # size of minibatch
 nb_steps = 50000000
 update_target = 10000
 train_visualize = False
-resume=True
+resume=False
 stepresume=960000
 #FRAME_PER_ACTION = 1
 
