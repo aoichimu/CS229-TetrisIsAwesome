@@ -4,7 +4,7 @@
 import os
 import numpy as np
 import gym
-import random, normal, uniform
+import random
 from simpleMemory import Memory, RingBuffer
 from keras.models import Sequential, model_from_config
 from keras.layers import Dense, Activation, Flatten
@@ -69,9 +69,9 @@ stepresume=960000
 
 model = Sequential()
 model.add(Flatten(input_shape=(1,) + env.observation_space.shape))
-model.add(Dense(128,init=uniform))
+model.add(Dense(128,init='uniform'))
 model.add(Activation('relu'))
-model.add(Dense(128,init=uniform))
+model.add(Dense(128,init='uniform'))
 model.add(Activation('relu'))
 model.add(Dense(nb_actions))
 model.add(Activation('linear'))
