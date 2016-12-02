@@ -218,7 +218,7 @@ if mode == 'train':
         if (t % 5000 == 0):
             print("Time", t, "Loss ", '%.2E' % loss, "Max Q", max_Q,
                   "Avg Q", avg_Q, "Action ", action)
-            model.save_weights('dqn_{0}_paramsRMS{1}_{2}_{3}.h5f'.format(
+            model.save_weights('dqn_{0}_paramsRMS_{1}_{2}_{3}.h5f'.format(
                 ENV_NAME, frameskip, update_target, linearNet), overwrite=True)
 
 # Close files that were written
