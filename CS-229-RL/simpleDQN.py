@@ -77,10 +77,13 @@ frameskip = args.frameskip
 update_target = args.update
 linearNet = args.linearNet
 
+print("Frameskip: ", frameskip, "Update Target: ", update_target,
+      "Linear Net: ", linearNet)
 #FRAME_PER_ACTION = 1
     
 # Changing model structure
 if frameskip == 'T':
+    print('Using framskip.')
     env._step = _step
 nb_actions = env.action_space.n
 state_size = env.observation_space.shape
