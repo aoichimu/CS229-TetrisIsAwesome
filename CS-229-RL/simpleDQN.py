@@ -77,6 +77,8 @@ frameskip = args.frameskip
 update_target = args.update
 linearNet = args.linearNet
 
+print("Frameskip: ", frameskip, "Update Target: ", update_target,
+      "Linear Net: ", linearNet)
 #FRAME_PER_ACTION = 1
     
 # Changing model structure

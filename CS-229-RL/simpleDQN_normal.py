@@ -65,26 +65,23 @@ nodesperlayer=128
 # Variables to set frameskip, target model, network
 user_inputs = True
 parser = argparse.ArgumentParser(description='ADD YOUR DESCRIPTION HERE')
-parser.add_argument('-fs','--frameskip', help='Boolean for frameskip',
+parser.add_argument('-fs','--frameskip', help='Boolean for frameskip', default='T',
                     required=False)
-parser.add_argument('-update','--update', help='Number of steps to update target',
+parser.add_argument('-update','--update', help='Number of steps to update target', default=10000,
                     type = int, required=False)
-parser.add_argument('-net','--linearNet', help='Boolean for linear network',
+parser.add_argument('-net','--linearNet', help='Boolean for linear network', default='F',
                     required=False)
 args = parser.parse_args()
 print(args)
 
-if user_inputs:
-    frameskip = args.frameskip
-    update_target = args.update
-    linearNet = args.linearNet
-else: 
-    update_target = 10000
-    frameskip = 'T'
-    linearNet = 'F'
+frameskip = args.frameskip
+update_target = args.update
+linearNet = args.linearNet
 
+print("Frameskip: ", frameskip, "Update Target: ", update_target,
+      "Linear Net: ", linearNet)
 #FRAME_PER_ACTION = 1
-    
+
 # Changing model structure
 if frameskip == 'T':
     env._step = _step
