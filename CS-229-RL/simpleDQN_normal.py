@@ -84,6 +84,7 @@ print("Frameskip: ", frameskip, "Update Target: ", update_target,
 
 # Changing model structure
 if frameskip == 'T':
+    print('Using framskip.')
     env._step = _step
 nb_actions = env.action_space.n
 state_size = env.observation_space.shape
