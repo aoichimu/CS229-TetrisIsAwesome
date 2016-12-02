@@ -83,7 +83,7 @@ print("Frameskip: ", frameskip, "Update Target: ", update_target,
 #FRAME_PER_ACTION = 1
 
 # Changing model structure
-if frameskip == 'T':
+if frameskip == 'T' and mode == 'train':
     print('Using framskip.')
     env._step = _step
 nb_actions = env.action_space.n
@@ -110,15 +110,15 @@ print(model.summary())
 
 # Initialize target model
 target_model = clone_model(model)
-target_model.compile(RMSprop(lr=0.00025, epsilon=1e-6, decay=0.95), 'mse')
+target_model.compile(RMSprop(lr=0.00025, epsilon=0.1, rho = 0.95, decay=0.95), 'mse')
 
 #model.compile(sgd(lr=0.2, clipvalue=1), 'mse')
 #model.compile(Adam(lr=0.001, clipvalue=1), 'mse')
-model.compile(RMSprop(lr=0.00025, epsilon=1e-6, decay=0.95), 'mse')
+model.compile(RMSprop(lr=0.00025, epsilon=0.1, rho = 0.95, decay=0.95), 'mse')
 
 if resume:
     print("Resuming training \n")
-    weights_filename = 'dqn_{}_paramsHeuniform.h5f'.format(ENV_NAME)
+    weights_filename = 'dqn_{}_paramsRMSN.h5f'.format(ENV_NAME)
     model.load_weights(weights_filename)
     target_model.load_weights(weights_filename)
     epsilon = epsilon_t0-(epsilon_tf-epsilon_t0)*stepresume/explore
@@ -218,7 +218,7 @@ if mode == 'train':
         if (t % 5000 == 0):
             print("Time", t, "Loss ", '%.2E' % loss, "Max Q", max_Q,
                   "Avg Q", avg_Q, "Action ", action)
-            model.save_weights('dqn_{0}_paramsRMS_{1}_{2}_{3}.h5f'.format(
+            model.save_weights('dqn_{0}_paramsRMSN_{1}_{2}_{3}.h5f'.format(
                 ENV_NAME, frameskip, update_target, linearNet), overwrite=True)
 
 # Close files that were written
@@ -229,15 +229,16 @@ if mode == 'train':
 ################ TESTING ################
 if mode == 'test':
     # Load model weights
-    weights_filename = 'dqn_{0}_paramsRMS_{1}_{2}_{3}.h5f'.format(
+    weights_filename = 'dqn_{0}_paramsRMSN_{1}_{2}_{3}.h5f'.format(
                     ENV_NAME, frameskip, update_target, linearNet)
     model.load_weights(weights_filename)
 
     # Testing model
     episodes = 5
-    mode='test'
     for eps in range(1, episodes+1):
         # Start env monitoring
+        np.random.seed()
+        env.seed()
         exp_name = './Breakout-exp-' + str(eps) + '/'
         env.monitor.start(exp_name, force = True)
         env.reset()
