@@ -22,7 +22,7 @@ env = gym.make(ENV_NAME)
 np.random.seed(123)
 env.seed(123)
 env.reset()
-mode='train'
+mode='test'
 
 ################# FUNCTIONS ################
 # Sets the frameskip and a Game Over signal to train and if testing, it plays the game normally.

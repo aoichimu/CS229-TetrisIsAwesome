@@ -18,10 +18,10 @@ ENV_NAME = 'Breakout-ram-v0'
 
 # Get the environment and extract the number of actions.
 env = gym.make(ENV_NAME)
-np.random.seed(123)
-env.seed(123)
+np.random.seed(400)
+env.seed(400)
 env.reset()
-mode='train'
+mode='test'
 
 ################# FUNCTIONS ################
 # Sets the frameskip and a Game Over signal to train and if testing, it plays the game normally.
@@ -64,7 +64,7 @@ nodesperlayer=128
 # Variables to set frameskip, target model, network
 user_inputs = True
 parser = argparse.ArgumentParser(description='ADD YOUR DESCRIPTION HERE')
-parser.add_argument('-fs','--frameskip', help='Boolean for frameskip', default='T',
+parser.add_argument('-fs','--frameskip', help='Boolean for frameskip', default='F',
                     required=False)
 parser.add_argument('-update','--update', help='Number of steps to update target', default=10000,
                     type = int, required=False)
@@ -77,12 +77,12 @@ frameskip = args.frameskip
 update_target = args.update
 linearNet = args.linearNet
 
-print("Frameskip: ", frameskip, "Update Target: ", update_target,
-      "Linear Net: ", linearNet)
+print("Frameskip", frameskip, "Update Target", update_target,
+      "Linear Net", linearNet)
 #FRAME_PER_ACTION = 1
     
 # Changing model structure
-if frameskip == 'T':
+if frameskip == 'T' and mode == 'train':
     print('Using framskip.')
     env._step = _step
 nb_actions = env.action_space.n
@@ -102,8 +102,8 @@ else:
     model.add(Activation('relu'))
     model.add(Dense(nodesperlayer,init='uniform'))
     model.add(Activation('relu'))
-    model.add(Dense(nodesperlayer,init='uniform'))
-    model.add(Activation('relu'))
+    #model.add(Dense(nodesperlayer,init='normal'))
+    #model.add(Activation('relu'))
     model.add(Dense(nb_actions))
     model.add(Activation('linear'))
 
@@ -115,7 +115,7 @@ target_model.compile(Adam(lr=0.1), 'mse')
 
 #model.compile(sgd(lr=0.2, clipvalue=1), 'mse')
 #model.compile(Adam(lr=0.001, clipvalue=1), 'mse')
-model.compile(Adam(lr=1e-6,clipvalue=1), 'mse')
+model.compile(Adam(lr=0.00025,clipvalue=1), 'mse')
 
 if resume:
     print("Resuming training \n")
@@ -217,8 +217,8 @@ if mode == 'train':
         
         # Save weights and output periodically
         if (t % 5000 == 0):
-            print("Time", t, "Loss ", '%.2E' % loss, "Max Q", max_Q,
-                  "Avg Q", avg_Q, "Action ", action)
+            print("Time", t, "Loss", '%.2E' % loss, "Max Q", max_Q,
+                  "Avg Q", avg_Q, "Action", action)
             model.save_weights('dqn_{0}_params_{1}_{2}_{3}.h5f'.format(
                 ENV_NAME, frameskip, update_target, linearNet), overwrite=True)
 
@@ -230,8 +230,10 @@ if mode == 'train':
 ################ TESTING ################
 if mode == 'test':
     # Load model weights
-    weights_filename = 'dqn_{0}_params_{1}_{2}_{3}.h5f'.format(
-                    ENV_NAME, frameskip, update_target, linearNet)
+    #weights_filename = 'dqn_{0}_params_{1}_{2}_{3}.h5f'.format(
+    #                ENV_NAME, frameskip, update_target, linearNet)
+    weights_filename = 'dqn_{}_paramsOvernight.h5f'.format(ENV_NAME)
+    print(weights_filename)
     model.load_weights(weights_filename)
 
     # Testing model

@@ -121,7 +121,6 @@ print(model.summary())
 model.compile(Adam(lr=1e-6,clipvalue=1), 'mse')
 
 ################# TRAINING ################
-t = 0
 if resume:
     print("Resuming training \n")
     weights_filename = 'dqn_{0}_paramsNormal_{1}_{2}_{3}.h5f'.format(
@@ -129,7 +128,6 @@ if resume:
     model.load_weights(weights_filename)
     #target_model.load_weights(weights_filename)
     epsilon = epsilon_t0-(epsilon_tf-epsilon_t0)*stepresume/explore
-    t = stepresume
 
 if mode == 'train':
     # initialize action value function q
@@ -142,6 +140,8 @@ if mode == 'train':
     epsilon = epsilon_t0
     state_t = state_t0
 
+    t = 0
+    
     # Basic Deque memory (should upgrade later)
     memory = Memory(memorySize=memory_replay)
     # TODO: Implement Prioritized Experience Replay: 
