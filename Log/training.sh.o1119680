@@ -1,0 +1,4 @@
+Using TensorFlow backend.
+[2016-12-01 14:57:22,933] Making new env: Breakout-ram-v0
+usage: simpleDQN.py [-h] [-fs FRAMESKIP] [-update UPDATE] [-net LINEARNET]
+simpleDQN.py: error: argument -fs/--frameskip: expected one argument
