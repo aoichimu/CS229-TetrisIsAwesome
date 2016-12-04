@@ -58,8 +58,8 @@ memory_replay = 1000000 # number of previous transitions to remember
 batch_size = 32 # size of minibatch
 nb_steps = 50000000
 train_visualize = False
-resume=False
-stepresume=960000
+resume=True
+stepresume=1115000
 nodesperlayer=128
 
 # Variables to set frameskip, target model, network
@@ -67,9 +67,9 @@ user_inputs = True
 parser = argparse.ArgumentParser(description='ADD YOUR DESCRIPTION HERE')
 parser.add_argument('-fs','--frameskip', help='Boolean for frameskip', default='T',
                     required=False)
-parser.add_argument('-update','--update', help='Number of steps to update target', default=10000,
+parser.add_argument('-update','--update', help='Number of steps to update target', default=1,
                     type = int, required=False)
-parser.add_argument('-net','--linearNet', help='Boolean for linear network', default='F',
+parser.add_argument('-net','--linearNet', help='Boolean for linear network', default='T',
                     required=False)
 args = parser.parse_args()
 print(args)
@@ -83,8 +83,7 @@ print("Frameskip: ", frameskip, "Update Target: ", update_target,
 #FRAME_PER_ACTION = 1
 
 # Changing model structure
-if frameskip == 'T':
-    print('Using framskip.')
+if frameskip == 'T' and mode == 'train':
     env._step = _step
 nb_actions = env.action_space.n
 state_size = env.observation_space.shape
@@ -123,7 +122,8 @@ model.compile(Adam(lr=1e-6,clipvalue=1), 'mse')
 
 if resume:
     print("Resuming training \n")
-    weights_filename = 'dqn_{}_paramsNormal.h5f'.format(ENV_NAME)
+    weights_filename = 'dqn_{0}_paramsNormal_{1}_{2}_{3}.h5f'.format(
+                    ENV_NAME, frameskip, update_target, linearNet)
     model.load_weights(weights_filename)
     #target_model.load_weights(weights_filename)
     epsilon = epsilon_t0-(epsilon_tf-epsilon_t0)*stepresume/explore
@@ -235,6 +235,7 @@ if mode == 'train':
 
 ################ TESTING ################
 if mode == 'test':
+    print('Running test cases')
     # Load model weights
     weights_filename = 'dqn_{0}_paramsNormal_{1}_{2}_{3}.h5f'.format(
                     ENV_NAME, frameskip, update_target, linearNet)
@@ -242,9 +243,10 @@ if mode == 'test':
 
     # Testing model
     episodes = 5
-    mode='test'
     for eps in range(1, episodes+1):
         # Start env monitoring
+        np.random.seed()
+        env.seed()
         exp_name = './Breakout-exp-' + str(eps) + '/'
         env.monitor.start(exp_name, force = True)
         env.reset()
