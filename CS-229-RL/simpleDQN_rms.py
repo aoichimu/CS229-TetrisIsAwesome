@@ -22,7 +22,7 @@ env = gym.make(ENV_NAME)
 np.random.seed(123)
 env.seed(123)
 env.reset()
-mode='test'
+mode='train'
 
 ################# FUNCTIONS ################
 # Sets the frameskip and a Game Over signal to train and if testing, it plays the game normally.
@@ -110,11 +110,13 @@ print(model.summary())
 
 # Initialize target model
 target_model = clone_model(model)
-target_model.compile(RMSprop(lr=0.00025, epsilon=0.1, rho = 0.95, decay=0.95), 'mse')
+target_model.compile(RMSprop(lr=0.00025, epsilon=0.1,
+                             rho = 0.95, decay=0.95, clipvalue=1), 'mse')
 
 #model.compile(sgd(lr=0.2, clipvalue=1), 'mse')
 #model.compile(Adam(lr=0.001, clipvalue=1), 'mse')
-model.compile(RMSprop(lr=0.00025, epsilon=0.1, rho = 0.95, decay=0.95), 'mse')
+model.compile(RMSprop(lr=0.00025, epsilon=0.1,
+                      rho = 0.95, decay=0.95, clipvalue=1), 'mse')
 
 if resume:
     print("Resuming training \n")
@@ -215,10 +217,10 @@ if mode == 'train':
         state_t = state_t1
         
         # Save weights and output periodically
-        if (t % 5000 == 0):
+        if (t % 1000 == 0):
             print("Time", t, "Loss ", '%.2E' % loss, "Max Q", max_Q,
                   "Avg Q", avg_Q, "Action ", action)
-            model.save_weights('dqn_{0}_paramsRMSN_{1}_{2}_{3}.h5f'.format(
+            model.save_weights('dqn_{0}_paramsRMS_{1}_{2}_{3}.h5f'.format(
                 ENV_NAME, frameskip, update_target, linearNet), overwrite=True)
 
 # Close files that were written
@@ -229,7 +231,7 @@ if mode == 'train':
 ################ TESTING ################
 if mode == 'test':
     # Load model weights
-    weights_filename = 'dqn_{0}_paramsRMSN_{1}_{2}_{3}.h5f'.format(
+    weights_filename = 'dqn_{0}_paramsRMS_{1}_{2}_{3}.h5f'.format(
                     ENV_NAME, frameskip, update_target, linearNet)
     model.load_weights(weights_filename)
 

@@ -17,9 +17,22 @@ Todo:
 image inputs and stacking
 
 Params:
-Network complexity: linear, 3 layers, normal dist (0.01)
+Network complexity: 3 layers, normal dist (0.01)
 Initialization: uniform
 Target model: N, 1000, 5000
 Frame-skipping: Y, N
 Normalize inputs: Y, N
 
+RAM Hyperparameters:
+Mem size - 50,000
+Warmup - 10,000
+Epsilon_0 - 1
+Epsilon_final - 0.1
+anneal - 50,000
+gamma - 0.99
+Optimizer - RMSProp (lr = 0.00025, e = 0.1, rho = 0.95, decay = 0.95, clipvalue = 1)
+Network size - 3 layers 
+Initialization - normal (sigma = 0.01)
+Target network - figure out who to clone with different init.
+Frameskip - yes
+ 
