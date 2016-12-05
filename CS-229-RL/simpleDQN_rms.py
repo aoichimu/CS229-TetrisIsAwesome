@@ -49,15 +49,17 @@ def clone_model(model, custom_objects={}):
     
 ################# MODEL INITIALIZATION AND PARAMETERS ################
 gamma = 0.99 # decay rate of past observations
-warmup = 50000 # timesteps to observe before training
-explore = 1000000 # frames over which to anneal epsilon
+warmup = 10000 # timesteps to observe before training
+explore = 50000 # frames over which to anneal epsilon
 epsilon_tf = 0.1 # final value of epsilon
 epsilon_t0 = 1 # starting value of epsilon
 epsilon_test=0.005 #epsilon for testing purposes
-memory_replay = 1000000 # number of previous transitions to remember
+memory_replay = 50000 # number of previous transitions to remember
 batch_size = 32 # size of minibatch
-nb_steps = 50000000
+nb_steps = 5000000
 train_visualize = False
+saveweights=5000
+
 resume=False
 stepresume=960000
 nodesperlayer=128
@@ -99,6 +101,8 @@ if linearNet == 'T':
 else: 
     model = Sequential()
     model.add(Flatten(input_shape=(1,) + env.observation_space.shape))
+    model.add(Dense(nodesperlayer,init='he_uniform'))
+    model.add(Activation('relu'))
     model.add(Dense(nodesperlayer,init='he_uniform'))
     model.add(Activation('relu'))
     model.add(Dense(nodesperlayer,init='he_uniform'))
@@ -217,11 +221,11 @@ if mode == 'train':
         state_t = state_t1
         
         # Save weights and output periodically
-        if (t % 1000 == 0):
+        if (t % saveweights == 0):
             print("Time", t, "Loss ", '%.2E' % loss, "Max Q", max_Q,
                   "Avg Q", avg_Q, "Action ", action)
-            model.save_weights('dqn_{0}_paramsRMS_{1}_{2}_{3}.h5f'.format(
-                ENV_NAME, frameskip, update_target, linearNet), overwrite=True)
+            model.save_weights('161204_exp1/dqn_{0}_paramsRMS0_{1}_{2}_{3}_{4}.h5f'.format(
+                ENV_NAME, frameskip, update_target, linearNet, t), overwrite=True)
 
 # Close files that were written
 #all_loss.close()
