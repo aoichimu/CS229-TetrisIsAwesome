@@ -61,7 +61,8 @@ train_visualize = False
 saveweights=5000
 
 nodesperlayer=128
-Max_t=750000
+min_t=750000
+Max_t=1500000
 # Variables to set frameskip, target model, network
 user_inputs = True
 parser = argparse.ArgumentParser(description='ADD YOUR DESCRIPTION HERE')
@@ -119,24 +120,25 @@ model.compile(RMSprop(lr=0.00025, epsilon=0.1,
 ################ TESTING ################
 
 # Load model weights
-f=open('161204_exp1.txt', 'w+')
+f=open('161204_exp1.txt', 'a+')
 episodes = 100
 np.random.seed()
 env.seed()
-for t in range(1,Max_t/saveweights+1):
+for t in range(min_t/saveweights+1,Max_t/saveweights+1):
     weights_filename = '161204_exp1/dqn_{0}_paramsRMS0_{1}_{2}_{3}_{4}.h5f'.format(
                     ENV_NAME, frameskip, update_target, linearNet, t*saveweights)
     model.load_weights(weights_filename)
     Avg_Q=0
     Avg_Reward=0
     Num_Frames=0
+    Max_R=0
     # Testing model
     for eps in range(1, episodes+1):
         # Start env monitoring
         #exp_name = './Breakout-exp-' + str(eps) + '/'
         #env.monitor.start(exp_name, force = True)
         env.reset()
-        
+        TotalR=0
         # Initialize outputs
         max_Q = 0
         terminal = False
@@ -163,15 +165,16 @@ for t in range(1,Max_t/saveweights+1):
             # Carry out action and observe new state state_t1 and reward
             state_t, reward, terminal, info = env.step(action)
             state_t = state_t.reshape(1, 1, state_t0.shape[0])
-            Avg_Reward += reward
-        
+            TotalR += reward
+        Avg_Reward+=TotalR
+        Max_R=max(TotalR,Max_R)
         
         
         #env.monitor.close()
     Avg_Q=Avg_Q/Num_Frames
     Avg_Reward=Avg_Reward/episodes
-    f.write('{0} {1} {2}\n'.format(t*saveweights, Avg_Reward, Avg_Q))
-    print("Training num", t*saveweights, "Reward ", Avg_Reward, "Avg_Q", Avg_Q)
+    f.write('{0} {1} {2} {3}\n'.format(t*saveweights, Avg_Reward, Max_R, Avg_Q))
+    print("Training num", t*saveweights, "Reward ", Avg_Reward,"Max Reward",Max_R, "Avg_Q", Avg_Q)
 f.close()
     # TODO: plot average Q, score per episode
     #agent = Agent(model);

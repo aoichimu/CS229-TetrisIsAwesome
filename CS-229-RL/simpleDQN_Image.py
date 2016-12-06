@@ -66,8 +66,8 @@ memory_replay = 50000 # number of previous transitions to remember
 batch_size = 32 # size of minibatch
 nb_steps = 5000000
 train_visualize = False
-saveweights=5
-
+saveweights=5000
+printQ=1000
 resume=False
 stepresume=960000
 nodesperlayer=128
@@ -115,7 +115,7 @@ model.add(Activation('relu'))
 model.add(Flatten())
 model.add(Dense(512, init=lambda shape, name: normal(shape, scale=0.01, name=name)))
 model.add(Activation('relu'))
-model.add(Dense(2,init=lambda shape, name: normal(shape, scale=0.01, name=name)))
+model.add(Dense(nb_actions,init=lambda shape, name: normal(shape, scale=0.01, name=name)))
 
 print(model.summary())
 
@@ -235,9 +235,10 @@ if mode == 'train':
         state_t = state_t1
         
         # Save weights and output periodically
-        if (t % saveweights == 0):
+        if (t% printQ == 0):
             print("Time", t, "Loss ", '%.2E' % loss, "Max Q", max_Q,
                   "Avg Q", avg_Q, "Action ", action)
+        if (t % saveweights == 0):
             model.save_weights('161204_exp2/dqn_{0}_paramsRMS_IMG_{1}_{2}_{3}_{4}.h5f'.format(
                 ENV_NAME, frameskip, update_target, linearNet, t), overwrite=True)
 
