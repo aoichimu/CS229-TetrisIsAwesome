@@ -11,6 +11,7 @@ from simpleMemory import Memory, RingBuffer
 from keras.models import Sequential, model_from_config
 from keras.layers import Dense, Activation, Flatten
 from keras.optimizers import RMSprop, sgd, Adam
+from keras import initializations
 
 ENV_NAME = 'Breakout-ram-v0'
 #os.chdir('/home/edgard/Desktop/CS229-TetrisIsAwesome/CS-229 RL')
@@ -47,16 +48,18 @@ def clone_model(model, custom_objects={}):
     return clone
     
 ################# MODEL INITIALIZATION AND PARAMETERS ################
-gamma = 0.99 # decay rate of past observations
-warmup = 50000 # timesteps to observe before training
+gamma = 0.95 # decay rate of past observations
+warmup = 100 # timesteps to observe before training
 explore = 1000000 # frames over which to anneal epsilon
 epsilon_tf = 0.1 # final value of epsilon
 epsilon_t0 = 1 # starting value of epsilon
 epsilon_test=0.005 #epsilon for testing purposes
-memory_replay = 1000000 # number of previous transitions to remember
+memory_replay = 100000 # number of previous transitions to remember
 batch_size = 32 # size of minibatch
-nb_steps = 50000000
+nb_steps = 5000000
 train_visualize = False
+saveweights=5000
+
 resume=False
 stepresume=960000
 nodesperlayer=128
@@ -77,10 +80,13 @@ frameskip = args.frameskip
 update_target = args.update
 linearNet = args.linearNet
 
+print("Frameskip: ", frameskip, "Update Target: ", update_target,
+      "Linear Net: ", linearNet)
 #FRAME_PER_ACTION = 1
-    
+
 # Changing model structure
-if frameskip == 'T':
+if frameskip == 'T' and mode == 'train':
+    print('Using framskip.')
     env._step = _step
 nb_actions = env.action_space.n
 state_size = env.observation_space.shape
@@ -95,11 +101,11 @@ if linearNet == 'T':
 else: 
     model = Sequential()
     model.add(Flatten(input_shape=(1,) + env.observation_space.shape))
-    model.add(Dense(nodesperlayer,init='uniform'))
+    model.add(Dense(nodesperlayer,init='he_uniform'))
     model.add(Activation('relu'))
-    model.add(Dense(nodesperlayer,init='uniform'))
+    model.add(Dense(nodesperlayer,init='he_uniform'))
     model.add(Activation('relu'))
-    model.add(Dense(nodesperlayer,init='uniform'))
+    model.add(Dense(nodesperlayer,init='he_uniform'))
     model.add(Activation('relu'))
     model.add(Dense(nb_actions))
     model.add(Activation('linear'))
@@ -108,15 +114,17 @@ print(model.summary())
 
 # Initialize target model
 target_model = clone_model(model)
-target_model.compile(Adam(lr=0.1), 'mse')
+target_model.compile(RMSprop(lr=0.00025, epsilon=0.1,
+                             rho = 0.95, decay=0.95, clipvalue=1), 'mse')
 
 #model.compile(sgd(lr=0.2, clipvalue=1), 'mse')
 #model.compile(Adam(lr=0.001, clipvalue=1), 'mse')
-model.compile(Adam(lr=1e-6,clipvalue=1), 'mse')
+model.compile(RMSprop(lr=0.00025, epsilon=0.1,
+                      rho = 0.95, decay=0.95, clipvalue=1), 'mse')
 
 if resume:
     print("Resuming training \n")
-    weights_filename = 'dqn_{}_params.h5f'.format(ENV_NAME)
+    weights_filename = 'dqn_{}_paramsRMSN.h5f'.format(ENV_NAME)
     model.load_weights(weights_filename)
     target_model.load_weights(weights_filename)
     epsilon = epsilon_t0-(epsilon_tf-epsilon_t0)*stepresume/explore
@@ -127,12 +135,11 @@ if mode == 'train':
     action_t0 = env.action_space.sample()
     if train_visualize:
         env.render()
-    state_t0, reward, terminal, info = env.step(action_t0)
-
+    state_t, reward, terminal, info = env.step(action_t0)
+    state_t = np.array(state_t, dtype=float)/255
+    state_t = state_t.reshape(1, 1, state_t.shape[0])
     # Start training
     epsilon = epsilon_t0
-    state_t = np.array(state_t0, dtype=float)/255
-    state_t = state_t.reshape(1, 1, state_t0.shape[0])
     
     t = 0
     # Basic Deque memory (should upgrade later)
@@ -150,7 +157,7 @@ if mode == 'train':
         rr = 0
         action = 0
         max_Q = 0
-	avg_Q = 0
+        avg_Q = 0
         
         # Select an action a
         if random.random() <= epsilon:
@@ -162,26 +169,24 @@ if mode == 'train':
         # Carry out action and observe new state state_t1 and reward
         if train_visualize:
             env.render()
-        state_t1, reward, terminal, info = env.step(action) # TODO remember to set action
+        state_t1, reward, terminal, info = env.step(action)
         state_t1 = np.array(state_t1, dtype=float)/255
-        state_t1 = state_t1.reshape(1, 1, state_t0.shape[0])
+        state_t1 = state_t1.reshape(1, 1, state_t1.shape[0])
         if terminal:
             env.reset()
         
-        # TODO: check reward clipping to -1, 0, 1
         # Linear anneal: We reduced the epsilon gradually
         if epsilon > epsilon_tf and t > warmup:
             epsilon -= (epsilon_t0 - epsilon_tf) / explore
         
         # Store experience
-        memory.append(state_t, action, reward, state_t1, terminal)
+        memory.append(state_t, action, np.clip(reward, -1, 1), state_t1, terminal)
                 
         # Sample random transitions from memory
         qInputs = np.zeros((batch_size, state_t.shape[1], state_t.shape[2]))
         targets = np.zeros((batch_size, nb_actions))
         
         if t > warmup:
-            
             minibatch = memory.randSample(batch_size)
         
             for i in range(0, len(minibatch)):
@@ -193,7 +198,8 @@ if mode == 'train':
                 if terminal:
                     targets[i, aa] = rr
                 else:
-                    qTarget = target_model.predict(ss_t1)
+                    #qTarget = target_model.predict(ss_t1)
+                    qTarget = model.predict(ss_t1)
                     max_Q = np.max(qTarget)
                     avg_Q = np.mean(qTarget)
                     #print("Max_Q updated t=",t)
@@ -206,17 +212,18 @@ if mode == 'train':
             #all_Q.write(str(max_Q)+ '\t' + str(max_Q2)+'\n')
             
         # Update target model
-        if (t % update_target == 0):
-            target_model.set_weights(model.get_weights())
+        #if (t % update_target == 0):
+        #    target_model.set_weights(model.get_weights())
+        
         t += 1
         state_t = state_t1
         
         # Save weights and output periodically
-        if (t % 5000 == 0):
+        if (t % saveweights == 0):
             print("Time", t, "Loss ", '%.2E' % loss, "Max Q", max_Q,
                   "Avg Q", avg_Q, "Action ", action)
-            model.save_weights('dqn_{0}_params_{1}_{2}_{3}_normalized.h5f'.format(
-                ENV_NAME, frameskip, update_target, linearNet), overwrite=True)
+            model.save_weights('161206_exp1/dqn_{0}_paramsRMS_Normalized_{1}_{2}_{3}_{4}.h5f'.format(
+                ENV_NAME, frameskip, update_target, linearNet, t), overwrite=True)
 
 # Close files that were written
 #all_loss.close()
@@ -226,15 +233,16 @@ if mode == 'train':
 ################ TESTING ################
 if mode == 'test':
     # Load model weights
-    weights_filename = 'dqn_{0}_params_{1}_{2}_{3}.h5f'.format(
+    weights_filename = 'dqn_{0}_paramsRMS_{1}_{2}_{3}.h5f'.format(
                     ENV_NAME, frameskip, update_target, linearNet)
     model.load_weights(weights_filename)
 
     # Testing model
     episodes = 5
-    mode='test'
     for eps in range(1, episodes+1):
         # Start env monitoring
+        np.random.seed()
+        env.seed()
         exp_name = './Breakout-exp-' + str(eps) + '/'
         env.monitor.start(exp_name, force = True)
         env.reset()
@@ -248,7 +256,7 @@ if mode == 'test':
         # Initialize game with random action
         action_t0 = env.action_space.sample()
         state_t0, reward, terminal, info = env.step(action_t0)
-        state_t = np.array(state_t0, dtype=float)/255
+        state_t = state_t0
         state_t = state_t.reshape(1, 1, state_t0.shape[0])
         
         # Run the game until terminal
@@ -263,7 +271,6 @@ if mode == 'test':
             
             # Carry out action and observe new state state_t1 and reward
             state_t, reward, terminal, info = env.step(action)
-            state_t = np.array(state_t1, dtype=float)/255
             state_t = state_t.reshape(1, 1, state_t0.shape[0])
             tReward += reward
         
@@ -284,4 +291,3 @@ if mode == 'test':
     #    if terminal:
     #        env.reset()
     #    return [state_t, reward, terminal, info]
-
