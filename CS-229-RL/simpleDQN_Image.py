@@ -57,17 +57,18 @@ def clone_model(model, custom_objects={}):
     
 ################# MODEL INITIALIZATION AND PARAMETERS ################
 gamma = 0.99 # decay rate of past observations
-warmup = 10000 # timesteps to observe before training
+warmup = 50000 # timesteps to observe before training
 explore = 50000 # frames over which to anneal epsilon
 epsilon_tf = 0.1 # final value of epsilon
 epsilon_t0 = 1 # starting value of epsilon
 epsilon_test=0.005 #epsilon for testing purposes
-memory_replay = 50000 # number of previous transitions to remember
+memory_replay = 1000000 # number of previous transitions to remember
 batch_size = 32 # size of minibatch
 nb_steps = 5000000
 train_visualize = False
 saveweights=5000
 printQ=1000
+UPDATE_FREQUENCY=4
 resume=False
 stepresume=960000
 nodesperlayer=128
@@ -167,7 +168,6 @@ if mode == 'train':
         # Initialize outputs
         loss = 0
         rr = 0
-        action = 0
         max_Q = 0
         avg_Q = 0
         
@@ -199,7 +199,7 @@ if mode == 'train':
         # Store experience
         memory.append(state_t, action, np.clip(reward, -1, 1), state_t1, terminal)
         
-        if t > warmup:
+        if (t > warmup) and (t%UPDATE_FREQUENCY==0):
             # Sample random transitions from memory
             qInputs = np.zeros((batch_size, state_t.shape[1], state_t.shape[2], state_t.shape[3]))
             targets = np.zeros((batch_size, nb_actions))
