@@ -21,7 +21,7 @@ parser.add_argument('-init','--init', help='Initialization', default='glorot_uni
                     required=False)
 parser.add_argument('-opt','--opt', help='Optimizer', default='rms',
                     required=False)
-parser.add_argument('-ouput','--output', help='Output folder', default='output',
+parser.add_argument('-output','--output', help='Output folder', default='output',
                     required=False)
 parser.add_argument('-mode','--mode', help='Mode', default='train',
                     required=False)
@@ -80,7 +80,7 @@ epsilon_t0 = 1 # starting value of epsilon
 epsilon_test=0.005 #epsilon for testing purposes
 memory_replay = 100000 # number of previous transitions to remember
 batch_size = 32 # size of minibatch
-nb_steps = 5000000
+nb_steps = 50000000
 train_visualize = False
 saveweights=5000
 update_target = 1
