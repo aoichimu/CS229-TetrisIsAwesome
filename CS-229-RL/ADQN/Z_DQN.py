@@ -22,8 +22,36 @@ from keras.layers.convolutional import Convolution2D
 from keras.optimizers import RMSprop, sgd, Adam
 from keras import initializations
 
+######USER INPUTS#######
+parser = argparse.ArgumentParser(description='Input arguments')
+parser.add_argument('-env','--env', help='Game selection', default='Breakout-v0',
+                    required=False)
+parser.add_argument('-init','--init', help='Initialization', default='glorot_uniform',
+                    required=False)
+parser.add_argument('-opt','--opt', help='Optimizer', default='rms',
+                    required=False)
+parser.add_argument('-threads','--threads', help='Threads', default='1',
+                    type = int, required=False)
+parser.add_argument('-ouput','--output', help='Output folder', default='output',
+                    required=False)
+parser.add_argument('-mode','--mode', help='Mode', default='train',
+                    required=False)
+args = parser.parse_args()
+print(args)
+
+env = args.env
+initDist = args.init
+opt = args.opt
+mode = args.mode
+threads = args.threads
+output = args.output
+
+# Create directory for output
+if not os.path.exists(output):
+    os.makedirs(output)
+
 ######VARIABLES######
-ENV_NAME = 'Breakout-v0'
+ENV_NAME = env
 gamma = 0.99 # decay rate of past observations
 explore = 1000000 # frames over which to anneal epsilon
 TMAX = 50000000
@@ -36,6 +64,7 @@ IMG_HEIGHT=80
 FRAME_PER_ACTION=4
 img_channels=4
 saved=False
+count = 0
 #####################
 def sample_final_epsilon():
     #Samples a final epsilon, based on the asynchronous model of Minh
@@ -43,7 +72,7 @@ def sample_final_epsilon():
     probabilities = np.array([0.4,0.3,0.3])
     return np.random.choice(final_epsilons, 1, p=list(probabilities))[0]
 
-def create_model(nb_actions,img_rows,img_cols):
+def create_model(nb_actions,img_rows,img_cols,opt):
 #Creates a model like the Minh one
 
     INPUT_SHAPE = (IMG_WIDTH, IMG_HEIGHT)
@@ -52,21 +81,25 @@ def create_model(nb_actions,img_rows,img_cols):
     input_shape = (WINDOW_LENGTH,) + INPUT_SHAPE
     model = Sequential()
     model.add(Permute((2, 3, 1), input_shape=input_shape))
-    model.add(Convolution2D(32, 8, 8, subsample=(4, 4), border_mode='same'))
+    model.add(Convolution2D(32, 8, 8, subsample=(4, 4), border_mode='same',init=initDist))
     model.add(Activation('relu'))
-    model.add(Convolution2D(64, 4, 4, subsample=(2, 2), border_mode='same'))
+    model.add(Convolution2D(64, 4, 4, subsample=(2, 2), border_mode='same',init=initDist))
     model.add(Activation('relu'))
-    model.add(Convolution2D(64, 3, 3, subsample=(1, 1), border_mode='same'))
+    model.add(Convolution2D(64, 3, 3, subsample=(1, 1), border_mode='same',init=initDist))
     model.add(Activation('relu'))
     model.add(Flatten())
-    model.add(Dense(512))
+    model.add(Dense(512,init=initDist))
     model.add(Activation('relu'))
-    model.add(Dense(nb_actions))
+    model.add(Dense(nb_actions,init=initDist))
     model.add(Activation('linear'))
     print(model.summary())
-    
-    model.compile(RMSprop(lr=0.00025, epsilon=0.1, rho = 0.95,
-                          decay=0.95, clipvalue=1), 'mse')  
+
+    if opt == 'rms':
+        model.compile(RMSprop(lr=0.00025, epsilon=0.1, rho = 0.95,
+                              decay=0.95, clipvalue=1), 'mse')
+    else:
+        model.compile(Adam(lr=0.00025, clipvalue=1), 'mse')
+        
     return model
     
 def clone_model(model, custom_objects={}):
@@ -83,7 +116,7 @@ def clone_model(model, custom_objects={}):
 
 def actor_learner_thread(thread_id,OLD_ENV, model,target_model,num_actions):
     #One thread, global variables
-    global TMAX, T, saved
+    global TMAX, T, saved, count
     global graph
     with graph.as_default():
     
@@ -141,10 +174,11 @@ def actor_learner_thread(thread_id,OLD_ENV, model,target_model,num_actions):
                 avgQ+=np.max(q)
                 TReward+=reward
                 if T%UPDATE_TARGET_NETWORK==0:
+                    count += 1
                     target_model.set_weights(model.get_weights())
-                    print("Thread ", thread_id, "updated the target model ", T)
-                    target_model.save_weights(
-                        'TEST/dqn_Asynchronous_{0}.h5f'.format(T), overwrite=True)
+                    print("Thread ", thread_id, "updated the target model ", count*UPDATE_TARGET_NETWORK)
+                    target_model.save_weights('{4}/dqn_Asynchronous_{0}_{1}_{2}_{3}.h5f'.format(
+                        ENV_NAME, initDist, opt, count*UPDATE_TARGET_NETWORK, output), overwrite=True)
                    
                 if t%UPDATE_NETWORK==0:
                     i=0
@@ -157,9 +191,9 @@ def actor_learner_thread(thread_id,OLD_ENV, model,target_model,num_actions):
                     
 ############################################################################
 #MAIN CODE HERE
-num_threads=1
+num_threads=threads
 envs = [gym.make(ENV_NAME) for i in range(num_threads)]
-model=create_model(envs[0].action_space.n,IMG_WIDTH,IMG_HEIGHT)
+model=create_model(envs[0].action_space.n,IMG_WIDTH,IMG_HEIGHT,opt)
 target_model=clone_model(model)
 graph = tf.get_default_graph()
 actor_learner_threads = [threading.Thread(target=actor_learner_thread,args=(thread_id, envs[thread_id],model,target_model,envs[0].action_space.n)) for thread_id in range(num_threads)]
