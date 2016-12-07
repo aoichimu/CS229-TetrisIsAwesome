@@ -52,11 +52,11 @@ def create_model(nb_actions,img_rows,img_cols):
     input_shape = (WINDOW_LENGTH,) + INPUT_SHAPE
     model = Sequential()
     model.add(Permute((2, 3, 1), input_shape=input_shape))
-    model.add(Convolution2D(32, 8, 8, subsample=(4, 4)))
+    model.add(Convolution2D(32, 8, 8, subsample=(4, 4), border_mode='same'))
     model.add(Activation('relu'))
-    model.add(Convolution2D(64, 4, 4, subsample=(2, 2)))
+    model.add(Convolution2D(64, 4, 4, subsample=(2, 2), border_mode='same'))
     model.add(Activation('relu'))
-    model.add(Convolution2D(64, 3, 3, subsample=(1, 1)))
+    model.add(Convolution2D(64, 3, 3, subsample=(1, 1), border_mode='same'))
     model.add(Activation('relu'))
     model.add(Flatten())
     model.add(Dense(512))
@@ -65,7 +65,8 @@ def create_model(nb_actions,img_rows,img_cols):
     model.add(Activation('linear'))
     print(model.summary())
     
-    model.compile(RMSprop(lr=0.00025, epsilon=0.1, rho = 0.95, decay=0.95, clipvalue=1), 'mse')  
+    model.compile(RMSprop(lr=0.00025, epsilon=0.1, rho = 0.95,
+                          decay=0.95, clipvalue=1), 'mse')  
     return model
     
 def clone_model(model, custom_objects={}):
@@ -76,7 +77,8 @@ def clone_model(model, custom_objects={}):
     }
     clone = model_from_config(config, custom_objects=custom_objects)
     clone.set_weights(model.get_weights())
-    clone.compile(RMSprop(lr=0.00025, epsilon=0.1, rho = 0.95, decay=0.95, clipvalue=1), 'mse') 
+    clone.compile(RMSprop(lr=0.00025, epsilon=0.1, rho = 0.95,
+                          decay=0.95, clipvalue=1), 'mse') 
     return clone
 
 def actor_learner_thread(thread_id,OLD_ENV, model,target_model,num_actions):
@@ -84,11 +86,9 @@ def actor_learner_thread(thread_id,OLD_ENV, model,target_model,num_actions):
     global TMAX, T, saved
     global graph
     with graph.as_default():
-
-        
+    
         #Wrap the environment so we can safely use it
         env=AtariEnvironment(gym_env=OLD_ENV, resized_width=IMG_WIDTH, resized_height=IMG_HEIGHT)
-    
         epsilon_tf = sample_final_epsilon()
         epsilon_t0 = 1
         epsilon=epsilon_t0
@@ -103,7 +103,7 @@ def actor_learner_thread(thread_id,OLD_ENV, model,target_model,num_actions):
         while T < TMAX:
             #Start the environment
             state_t = env.get_initial_state()
-            inputs_batch = np.zeros((UPDATE_NETWORK, state_t.shape[1], state_t.shape[2], state_t.shape[3]))
+            inputs_batch = np.zeros((UPDATE_NETWORK, state_t.shape[1],state_t.shape[2], state_t.shape[3]))
             target_batch = np.zeros((UPDATE_NETWORK, num_actions))
             terminal=False
             TReward=0
@@ -143,24 +143,26 @@ def actor_learner_thread(thread_id,OLD_ENV, model,target_model,num_actions):
                 if T%UPDATE_TARGET_NETWORK==0:
                     target_model.set_weights(model.get_weights())
                     print("Thread ", thread_id, "updated the target model ", T)
-                    target_model.save_weights('TEST/dqn_Asynchronous_{0}.h5f'.format(T), overwrite=True)
+                    target_model.save_weights(
+                        'TEST/dqn_Asynchronous_{0}.h5f'.format(T), overwrite=True)
                    
                 if t%UPDATE_NETWORK==0:
                     i=0
                     loss = model.train_on_batch(inputs_batch,target_batch) 
                 if terminal:
-                    loss = model.train_on_batch(inputs_batch[:i],target_batch[:i,:])
+                    loss = model.train_on_batch(
+                        inputs_batch[:i],target_batch[:i,:])
                     print("Thread# ", thread_id,"EpsReward: ",TReward, "avgQ: ", avgQ/survived,"Time: ",T)
                     break
                     
 ############################################################################
 #MAIN CODE HERE
-num_threads=8
+num_threads=1
 envs = [gym.make(ENV_NAME) for i in range(num_threads)]
 model=create_model(envs[0].action_space.n,IMG_WIDTH,IMG_HEIGHT)
 target_model=clone_model(model)
 graph = tf.get_default_graph()
-actor_learner_threads = [threading.Thread(target=actor_learner_thread, args=(thread_id, envs[thread_id], model,target_model,envs[0].action_space.n)) for thread_id in range(num_threads)]
+actor_learner_threads = [threading.Thread(target=actor_learner_thread,args=(thread_id, envs[thread_id],model,target_model,envs[0].action_space.n)) for thread_id in range(num_threads)]
 target_model.save_weights('TEST/dqn_Asynchronous_0.h5f', overwrite=True)
 for tau in actor_learner_threads:
     tau.start()
