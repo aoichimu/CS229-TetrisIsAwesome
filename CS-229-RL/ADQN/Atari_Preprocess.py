@@ -51,8 +51,12 @@ class AtariEnvironment(object):
         Pops oldest frame, adds current frame to the state buffer.
         Returns current state.
         """
-
+        lives_before = self.env.ale.lives()
+    
         x_t1, r_t, terminal, info = self.env.step(action_index)
+        if lives_before != self.env.ale.lives():
+            terminal=1
+            
         x_t1 = self.preprocess(x_t1)
 
         previous_frames = np.array(self.state_buffer)

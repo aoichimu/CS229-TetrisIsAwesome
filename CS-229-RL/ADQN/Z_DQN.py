@@ -22,6 +22,7 @@ from keras.layers.convolutional import Convolution2D
 from keras.optimizers import RMSprop, sgd, Adam
 from keras import initializations
 
+from keras import backend as K
 ######VARIABLES######
 ENV_NAME = 'Breakout-v0'
 gamma = 0.99 # decay rate of past observations
@@ -33,9 +34,10 @@ UPDATE_TARGET_NETWORK=40000
 T=0
 IMG_WIDTH=80
 IMG_HEIGHT=80
-FRAME_PER_ACTION=4
+FRAME_PER_ACTION=1
 img_channels=4
 saved=False
+counter=0
 #####################
 def sample_final_epsilon():
     #Samples a final epsilon, based on the asynchronous model of Minh
@@ -79,11 +81,11 @@ def clone_model(model, custom_objects={}):
     clone.compile(RMSprop(lr=0.00025, epsilon=0.1, rho = 0.95, decay=0.95, clipvalue=1), 'mse') 
     return clone
 
-def actor_learner_thread(thread_id,OLD_ENV, model,target_model,num_actions):
+def actor_learner_thread(thread_id,OLD_ENV, model,target_model,num_actions,sessi):
     #One thread, global variables
-    global TMAX, T, saved
-    global graph
-    with graph.as_default():
+    global TMAX, T, saved, counter
+    K.set_session(sessi)
+    with sessi.graph.as_default():
 
         
         #Wrap the environment so we can safely use it
@@ -141,27 +143,37 @@ def actor_learner_thread(thread_id,OLD_ENV, model,target_model,num_actions):
                 avgQ+=np.max(q)
                 TReward+=reward
                 if T%UPDATE_TARGET_NETWORK==0:
+                    counter+=1
                     target_model.set_weights(model.get_weights())
                     print("Thread ", thread_id, "updated the target model ", T)
-                    target_model.save_weights('TEST/dqn_Asynchronous_{0}.h5f'.format(T), overwrite=True)
+                    target_model.save_weights('TEST/Thread_{0}/dqn_Asynchronous_{1}.h5f'.format(thread_id,counter*UPDATE_TARGET_NETWORK), overwrite=True)
                    
                 if t%UPDATE_NETWORK==0:
                     i=0
                     loss = model.train_on_batch(inputs_batch,target_batch) 
                 if terminal:
                     loss = model.train_on_batch(inputs_batch[:i],target_batch[:i,:])
+                    i=0
                     print("Thread# ", thread_id,"EpsReward: ",TReward, "avgQ: ", avgQ/survived,"Time: ",T)
                     break
-                    
+                if(counter==TMAX/UPDATE_TARGET_NETWORK):
+                    sess.close()
 ############################################################################
 #MAIN CODE HERE
-num_threads=8
-envs = [gym.make(ENV_NAME) for i in range(num_threads)]
-model=create_model(envs[0].action_space.n,IMG_WIDTH,IMG_HEIGHT)
-target_model=clone_model(model)
-graph = tf.get_default_graph()
-actor_learner_threads = [threading.Thread(target=actor_learner_thread, args=(thread_id, envs[thread_id], model,target_model,envs[0].action_space.n)) for thread_id in range(num_threads)]
-target_model.save_weights('TEST/dqn_Asynchronous_0.h5f', overwrite=True)
-for tau in actor_learner_threads:
-    tau.start()
-       
+def main(_):
+    g = tf.Graph()
+    with g.as_default():
+        sess=tf.Session()
+        K.set_session(sess)
+        num_threads=8
+        envs = [gym.make(ENV_NAME) for i in range(num_threads)]
+        model=create_model(envs[0].action_space.n,IMG_WIDTH,IMG_HEIGHT)
+        target_model=create_model(envs[0].action_space.n,IMG_WIDTH,IMG_HEIGHT)
+        target_model.set_weights(model.get_weights())
+        actor_learner_threads = [threading.Thread(target=actor_learner_thread, args=(thread_id, envs[thread_id], model,target_model,envs[0].action_space.n,sess)) for thread_id in range(num_threads)]
+        target_model.save_weights('TEST/dqn_Asynchronous_0.h5f', overwrite=True)
+        for tau in actor_learner_threads:
+            tau.start()
+            
+if __name__ == "__main__":
+    tf.app.run()
