@@ -13,7 +13,32 @@ from keras.layers import Dense, Activation, Flatten
 from keras.optimizers import RMSprop, sgd, Adam
 from keras import initializations
 
-ENV_NAME = 'Breakout-ram-v0'
+# Variables to set
+parser = argparse.ArgumentParser(description='Input arguments')
+parser.add_argument('-env','--env', help='Game selection', default='Breakout-ram-v0',
+                    required=False)
+parser.add_argument('-init','--init', help='Initialization', default='glorot_uniform',
+                    required=False)
+parser.add_argument('-opt','--opt', help='Optimizer', default='rms',
+                    required=False)
+parser.add_argument('-output','--output', help='Output folder', default='output',
+                    required=False)
+parser.add_argument('-mode','--mode', help='Mode', default='train',
+                    required=False)
+args = parser.parse_args()
+print(args)
+
+env = args.env
+initDist = args.init
+opt = args.opt
+output = args.output
+mode = args.mode
+
+# Create directory for output
+if not os.path.exists(output):
+    os.makedirs(output)
+
+ENV_NAME = env
 #os.chdir('/home/edgard/Desktop/CS229-TetrisIsAwesome/CS-229 RL')
 #os.chdir('/home/jennie/Desktop/CS229-TetrisIsAwesome/MaTris-master/')
 
@@ -22,7 +47,7 @@ env = gym.make(ENV_NAME)
 np.random.seed(123)
 env.seed(123)
 env.reset()
-mode='train'
+#mode='train'
 
 ################# FUNCTIONS ################
 # Sets the frameskip and a Game Over signal to train and if testing, it plays the game normally.
@@ -30,12 +55,11 @@ def _step(a):
     reward = 0.0
     action = env._action_set[a]
     lives_before = env.ale.lives()
-    for _ in range(4):
-        reward += env.ale.act(action)
+    reward += env.ale.act(action)
     ob = env._get_obs()
     done = env.ale.game_over() or (mode == 'train' and lives_before != env.ale.lives())
-    #if done:
-    #	print('DONE', "Action ", action)
+    if lives_before != env.ale.lives():
+        done = True
     return ob, reward, done, {}
 
 def clone_model(model, custom_objects={}):
@@ -48,7 +72,7 @@ def clone_model(model, custom_objects={}):
     return clone
     
 ################# MODEL INITIALIZATION AND PARAMETERS ################
-gamma = 0.95 # decay rate of past observations
+gamma = 0.99 # decay rate of past observations
 warmup = 100 # timesteps to observe before training
 explore = 1000000 # frames over which to anneal epsilon
 epsilon_tf = 0.1 # final value of epsilon
@@ -56,32 +80,15 @@ epsilon_t0 = 1 # starting value of epsilon
 epsilon_test=0.005 #epsilon for testing purposes
 memory_replay = 100000 # number of previous transitions to remember
 batch_size = 32 # size of minibatch
-nb_steps = 5000000
+nb_steps = 50000000
 train_visualize = False
 saveweights=5000
+update_target = 1
+frameskip = 'T'
 
 resume=False
 stepresume=960000
 nodesperlayer=128
-
-# Variables to set frameskip, target model, network
-user_inputs = True
-parser = argparse.ArgumentParser(description='ADD YOUR DESCRIPTION HERE')
-parser.add_argument('-fs','--frameskip', help='Boolean for frameskip', default='T',
-                    required=False)
-parser.add_argument('-update','--update', help='Number of steps to update target', default=10000,
-                    type = int, required=False)
-parser.add_argument('-net','--linearNet', help='Boolean for linear network', default='F',
-                    required=False)
-args = parser.parse_args()
-print(args)
-
-frameskip = args.frameskip
-update_target = args.update
-linearNet = args.linearNet
-
-print("Frameskip: ", frameskip, "Update Target: ", update_target,
-      "Linear Net: ", linearNet)
 #FRAME_PER_ACTION = 1
 
 # Changing model structure
@@ -92,23 +99,16 @@ nb_actions = env.action_space.n
 state_size = env.observation_space.shape
 
 # Initialize model 
-
-if linearNet == 'T':
-    model = Sequential()
-    model.add(Flatten(input_shape=(1,) + env.observation_space.shape))
-    model.add(Dense(nb_actions))
-    model.add(Activation('linear'))
-else: 
-    model = Sequential()
-    model.add(Flatten(input_shape=(1,) + env.observation_space.shape))
-    model.add(Dense(nodesperlayer,init='he_uniform'))
-    model.add(Activation('relu'))
-    model.add(Dense(nodesperlayer,init='he_uniform'))
-    model.add(Activation('relu'))
-    model.add(Dense(nodesperlayer,init='he_uniform'))
-    model.add(Activation('relu'))
-    model.add(Dense(nb_actions))
-    model.add(Activation('linear'))
+model = Sequential()
+model.add(Flatten(input_shape=(1,) + env.observation_space.shape))
+model.add(Dense(nodesperlayer,init=initDist))
+model.add(Activation('relu'))
+model.add(Dense(nodesperlayer,init=initDist))
+model.add(Activation('relu'))
+model.add(Dense(nodesperlayer,init=initDist))
+model.add(Activation('relu'))
+model.add(Dense(nb_actions,init=initDist))
+model.add(Activation('linear'))
 
 print(model.summary())
 
@@ -118,9 +118,11 @@ target_model.compile(RMSprop(lr=0.00025, epsilon=0.1,
                              rho = 0.95, decay=0.95, clipvalue=1), 'mse')
 
 #model.compile(sgd(lr=0.2, clipvalue=1), 'mse')
-#model.compile(Adam(lr=0.001, clipvalue=1), 'mse')
-model.compile(RMSprop(lr=0.00025, epsilon=0.1,
-                      rho = 0.95, decay=0.95, clipvalue=1), 'mse')
+if opt == 'rms':
+    model.compile(RMSprop(lr=0.00025, epsilon=0.1,
+                          rho = 0.95, decay=0.95, clipvalue=1), 'mse')
+else:
+    model.compile(Adam(lr=0.00025, clipvalue=1), 'mse')
 
 if resume:
     print("Resuming training \n")
@@ -142,6 +144,7 @@ if mode == 'train':
     epsilon = epsilon_t0
     
     t = 0
+    max_R = 0
     # Basic Deque memory (should upgrade later)
     memory = Memory(memorySize=memory_replay)
     # TODO: Implement Prioritized Experience Replay: 
@@ -173,6 +176,8 @@ if mode == 'train':
         state_t1 = np.array(state_t1, dtype=float)/255
         state_t1 = state_t1.reshape(1, 1, state_t1.shape[0])
         if terminal:
+            if reward > max_R:
+                max_R = reward
             env.reset()
         
         # Linear anneal: We reduced the epsilon gradually
@@ -221,9 +226,10 @@ if mode == 'train':
         # Save weights and output periodically
         if (t % saveweights == 0):
             print("Time", t, "Loss ", '%.2E' % loss, "Max Q", max_Q,
-                  "Avg Q", avg_Q, "Action ", action)
-            model.save_weights('161206_exp1/dqn_{0}_paramsRMS_Normalized_{1}_{2}_{3}_{4}.h5f'.format(
-                ENV_NAME, frameskip, update_target, linearNet, t), overwrite=True)
+                  "Avg Q", avg_Q, "Action ", action, "Max R", max_R)
+            max_R = 0
+            model.save_weights('{4}/dqn_{0}_normalized_{1}_{2}_{3}.h5f'.format(
+                ENV_NAME, initDist, opt, t, output), overwrite=True)
 
 # Close files that were written
 #all_loss.close()
