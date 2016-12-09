@@ -20,7 +20,7 @@ parser.add_argument('-net','--net', help='Network architecture', default='2',
                     required=False)
 parser.add_argument('-opt','--opt', help='Optimizer', default='adam',
                     required=False)
-parser.add_argument('-ouput','--output', help='Output folder', default='output',
+parser.add_argument('-output','--output', help='Output folder', default='output',
                     required=False)
 parser.add_argument('-mode','--mode', help='Mode', default='train',
                     required=False)
