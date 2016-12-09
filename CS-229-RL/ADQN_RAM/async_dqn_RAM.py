@@ -42,6 +42,7 @@ flags.DEFINE_boolean('testing', False, 'If true, run gym evaluation')
 flags.DEFINE_string('checkpoint_path', 'path/to/recent.ckpt', 'Path to recent checkpoint to use for evaluation')
 flags.DEFINE_string('eval_dir', './evals', 'Directory to store gym evaluation')
 flags.DEFINE_integer('num_eval_episodes', 100, 'Number of episodes to run gym evaluation.')
+FLAGS = flags.FLAGS
 T = 0
 TMAX = FLAGS.tmax
 
