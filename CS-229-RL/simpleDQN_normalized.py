@@ -6,18 +6,18 @@ import sys
 import argparse
 import numpy as np
 import gym
-import random
+#import gym_ple
 from simpleMemory import Memory, RingBuffer
 from keras.models import Sequential, model_from_config
 from keras.layers import Dense, Activation, Flatten
-from keras.optimizers import RMSprop, sgd, Adam
+from keras.optimizers import RMSprop, Adam
 from keras import initializations
 
 # Variables to set
 parser = argparse.ArgumentParser(description='Input arguments')
 parser.add_argument('-env','--env', help='Game selection', default='Breakout-ram-v0',
                     required=False)
-parser.add_argument('-init','--init', help='Initialization', default='glorot_uniform',
+parser.add_argument('-net','--net', help='Network architecture', default='2',
                     required=False)
 parser.add_argument('-opt','--opt', help='Optimizer', default='rms',
                     required=False)
@@ -29,7 +29,7 @@ args = parser.parse_args()
 print(args)
 
 env = args.env
-initDist = args.init
+net = args.net
 opt = args.opt
 output = args.output
 mode = args.mode
@@ -57,7 +57,7 @@ def _step(a):
     lives_before = env.ale.lives()
     reward += env.ale.act(action)
     ob = env._get_obs()
-    done = env.ale.game_over() or (mode == 'train' and lives_before != env.ale.lives())
+    done = env.ale.game_over() #or (mode == 'train' and lives_before != env.ale.lives())
     if lives_before != env.ale.lives():
         done = True
     return ob, reward, done, {}
@@ -73,8 +73,8 @@ def clone_model(model, custom_objects={}):
     
 ################# MODEL INITIALIZATION AND PARAMETERS ################
 gamma = 0.99 # decay rate of past observations
-warmup = 100 # timesteps to observe before training
-explore = 1000000 # frames over which to anneal epsilon
+warmup = 5000 # timesteps to observe before training
+explore = 100000 # frames over which to anneal epsilon
 epsilon_tf = 0.1 # final value of epsilon
 epsilon_t0 = 1 # starting value of epsilon
 epsilon_test=0.005 #epsilon for testing purposes
@@ -82,54 +82,51 @@ memory_replay = 100000 # number of previous transitions to remember
 batch_size = 32 # size of minibatch
 nb_steps = 5000000
 train_visualize = False
-saveweights=5000
+saveweights=100
 update_target = 1
-frameskip = 'T'
-
-resume=False
-stepresume=960000
+frameskip = 'F'
 nodesperlayer=128
-#FRAME_PER_ACTION = 1
 
 # Changing model structure
 if frameskip == 'T' and mode == 'train':
     print('Using framskip.')
-    env._step = _step
+env._step = _step
 nb_actions = env.action_space.n
 state_size = env.observation_space.shape
 
-# Initialize model 
-model = Sequential()
-model.add(Flatten(input_shape=(1,) + env.observation_space.shape))
-model.add(Dense(nodesperlayer,init=initDist))
-model.add(Activation('relu'))
-model.add(Dense(nodesperlayer,init=initDist))
-model.add(Activation('relu'))
-model.add(Dense(nodesperlayer,init=initDist))
-model.add(Activation('relu'))
-model.add(Dense(nb_actions,init=initDist))
-model.add(Activation('linear'))
+# Initialize model
+if net == '2':
+    model = Sequential()
+    model.add(Flatten(input_shape=(1,) + env.observation_space.shape))
+    model.add(Dense(nodesperlayer*7))
+    model.add(Activation('relu'))
+    model.add(Dense(nb_actions))
+    model.add(Activation('linear'))
+else:
+    model = Sequential()
+    model.add(Flatten(input_shape=(1,) + env.observation_space.shape))
+    model.add(Dense(nodesperlayer))
+    model.add(Activation('relu'))
+    model.add(Dense(nodesperlayer))
+    model.add(Activation('relu'))
+    model.add(Dense(nodesperlayer))
+    model.add(Activation('relu'))
+    model.add(Dense(nb_actions))
+    model.add(Activation('linear'))
 
 print(model.summary())
 
-# Initialize target model
+# Initialize target model, random combilations
+adam = Adam(lr=0.00025)
+rmsprop = RMSprop(lr=0.00025, epsilon=0.1,rho = 0.95, decay=0.95)
+
 target_model = clone_model(model)
-target_model.compile(RMSprop(lr=0.00025, epsilon=0.1,
-                             rho = 0.95, decay=0.95, clipvalue=1), 'mse')
+target_model.compile(optimizer=adam,loss='mse')
 
-#model.compile(sgd(lr=0.2, clipvalue=1), 'mse')
 if opt == 'rms':
-    model.compile(RMSprop(lr=0.00025, epsilon=0.1,
-                          rho = 0.95, decay=0.95, clipvalue=1), 'mse')
+    model.compile(optimizer=rmsprop,loss='mse')
 else:
-    model.compile(Adam(lr=0.00025, clipvalue=1), 'mse')
-
-if resume:
-    print("Resuming training \n")
-    weights_filename = 'dqn_{}_paramsRMSN.h5f'.format(ENV_NAME)
-    model.load_weights(weights_filename)
-    target_model.load_weights(weights_filename)
-    epsilon = epsilon_t0-(epsilon_tf-epsilon_t0)*stepresume/explore
+    model.compile(optimizer=adam,loss='mse')
 
 ################# TRAINING ################
 if mode == 'train':
@@ -138,46 +135,49 @@ if mode == 'train':
     if train_visualize:
         env.render()
     state_t, reward, terminal, info = env.step(action_t0)
-    state_t = np.array(state_t, dtype=float)/255
+    state_t = np.float32(state_t / 255.0) # normalization of inputs
     state_t = state_t.reshape(1, 1, state_t.shape[0])
+
     # Start training
     epsilon = epsilon_t0
-    
     t = 0
-    max_R = 0
-    # Basic Deque memory (should upgrade later)
+    eps = 0
+    total_R = 0
+    avg_Q = 0
+    avg_maxQ = 0
+    loss = 0
+    trainTime = 0
+    
     memory = Memory(memorySize=memory_replay)
     # TODO: Implement Prioritized Experience Replay: 
     #    https://arxiv.org/pdf/1511.05952v4.pdf
 
-    # TODO: Future Agent class
-    #all_Q = open("maxQ.txt", "w")
-    #all_loss = open("loss.txt", "w")
-
     while t < nb_steps:
         # Initialize outputs
-        loss = 0
-        rr = 0
-        action = 0
-        max_Q = 0
-        avg_Q = 0
+        if t == warmup:
+            eps = 0
         
-        # Select an action a
-        if random.random() <= epsilon:
-            action = env.action_space.sample()
+        # Select an action a and save q value
+        q = model.predict(state_t)
+        avg_maxQ += np.max(q)
+        avg_Q += np.mean(q)
+        
+        if np.random.uniform() <= epsilon:
+            action = np.random.random_integers(0, nb_actions-1)
         else:
-            q = model.predict(state_t)
             action = np.argmax(q)
+            
         
         # Carry out action and observe new state state_t1 and reward
         if train_visualize:
             env.render()
         state_t1, reward, terminal, info = env.step(action)
-        state_t1 = np.array(state_t1, dtype=float)/255
+        state_t1 = np.float32(state_t1 / 255.0)
         state_t1 = state_t1.reshape(1, 1, state_t1.shape[0])
+        
         if terminal:
-            if reward > max_R:
-                max_R = reward
+            eps += 1 # increase episode count
+            total_R += reward # update reward
             env.reset()
         
         # Linear anneal: We reduced the epsilon gradually
@@ -196,40 +196,41 @@ if mode == 'train':
         
             for i in range(0, len(minibatch)):
                 ss, aa, rr, ss_t1, terminal = minibatch[i]
-                targets[i] = model.predict(ss)
-                #max_Q2=np.max(targets[i])
+                #print(minibatch[i])
                 qInputs[i:i+1] = ss
+                targets[i] = model.predict(ss)
 
                 if terminal:
                     targets[i, aa] = rr
                 else:
-                    #qTarget = target_model.predict(ss_t1)
-                    qTarget = model.predict(ss_t1)
+                    qTarget = target_model.predict(ss_t1)
                     max_Q = np.max(qTarget)
-                    avg_Q = np.mean(qTarget)
-                    #print("Max_Q updated t=",t)
                     tt = rr + gamma*max_Q
                 
                     targets[i, aa] = tt
-        
             loss += model.train_on_batch(qInputs, targets)
-            #all_loss.write('\n' + str(loss))
-            #all_Q.write(str(max_Q)+ '\t' + str(max_Q2)+'\n')
             
         # Update target model
-        #if (t % update_target == 0):
-        #    target_model.set_weights(model.get_weights())
+        if (t % update_target == 0):
+            target_model.set_weights(model.get_weights())
         
         t += 1
+        trainTime += 1
         state_t = state_t1
         
         # Save weights and output periodically
-        if (t % saveweights == 0):
-            print("Time", t, "Loss ", '%.2E' % loss, "Max Q", max_Q,
-                  "Avg Q", avg_Q, "Action ", action, "Max R", max_R)
-            max_R = 0
-            model.save_weights('{4}/dqn_{0}_normalized_{1}_{2}_{3}.h5f'.format(
-                ENV_NAME, initDist, opt, t, output), overwrite=True)
+        if (eps % saveweights == 0 and t > warmup):
+            print("Time", t, "Eps", eps, "Loss ", '%.2E' % loss/trainTime,
+                  "Avg Max Q", avg_maxQ/trainTime, "Avg Q", avg_Q/trainTime,
+                  "Avg R", total_R/saveweights)
+            total_R = 0
+            avg_Q = 0
+            loss = 0
+            avg_maxQ = 0
+            trainTime = 0
+            
+            model.save_weights('{3}/dqn_{0}_RAM_{1}_{2}.h5f'.format(
+                ENV_NAME, opt, t, output), overwrite=True)
 
 # Close files that were written
 #all_loss.close()
@@ -239,8 +240,8 @@ if mode == 'train':
 ################ TESTING ################
 if mode == 'test':
     # Load model weights
-    weights_filename = 'dqn_{0}_paramsRMS_{1}_{2}_{3}.h5f'.format(
-                    ENV_NAME, frameskip, update_target, linearNet)
+    weights_filename = '{3}/dqn_{0}_RAM_{1}_{2}.h5f'.format(
+                ENV_NAME, opt, t, output)
     model.load_weights(weights_filename)
 
     # Testing model
@@ -268,8 +269,8 @@ if mode == 'test':
         # Run the game until terminal
         while not terminal:
             # Select an action a
-            if random.random() <= epsilon:
-                action = env.action_space.sample()
+            if no.random.uniform() <= epsilon:
+                action = np.random.random_integers(0, nb_actions-1)
             else:
                 q = model.predict(state_t)
                 max_Q = np.max(q)
