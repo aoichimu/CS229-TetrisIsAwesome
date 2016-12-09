@@ -81,7 +81,7 @@ memory_replay = 100000 # number of previous transitions to remember
 batch_size = 32 # size of minibatch
 nb_steps = 5000000
 train_visualize = False
-saveweights=10000
+saveweights=1000
 update_target = 1
 frameskip = 'F'
 nodesperlayer=128
@@ -170,12 +170,13 @@ if mode == 'train':
         if train_visualize:
             env.render()
         state_t1, reward, terminal, info = env.step(action)
+        total_R += reward # update reward
         state_t1 = np.float32(state_t1 / 255.0)
         state_t1 = state_t1.reshape(1, 1, state_t1.shape[0])
         
         if terminal:
             eps += 1 # increase episode count
-            total_R += reward # update reward
+             
             env.reset()
         
         # Linear anneal: We reduced the epsilon gradually
