@@ -6,7 +6,6 @@ import sys
 import argparse
 import numpy as np
 import gym
-#import gym_ple
 from simpleMemory import Memory, RingBuffer
 from keras.models import Sequential, model_from_config
 from keras.layers import Dense, Activation, Flatten
@@ -19,9 +18,9 @@ parser.add_argument('-env','--env', help='Game selection', default='Breakout-ram
                     required=False)
 parser.add_argument('-net','--net', help='Network architecture', default='2',
                     required=False)
-parser.add_argument('-opt','--opt', help='Optimizer', default='rms',
+parser.add_argument('-opt','--opt', help='Optimizer', default='adam',
                     required=False)
-parser.add_argument('-output','--output', help='Output folder', default='output',
+parser.add_argument('-ouput','--output', help='Output folder', default='output',
                     required=False)
 parser.add_argument('-mode','--mode', help='Mode', default='train',
                     required=False)
@@ -80,7 +79,7 @@ epsilon_t0 = 1 # starting value of epsilon
 epsilon_test=0.005 #epsilon for testing purposes
 memory_replay = 100000 # number of previous transitions to remember
 batch_size = 32 # size of minibatch
-nb_steps = 50000000
+nb_steps = 5000000
 train_visualize = False
 saveweights=100
 update_target = 1
@@ -144,9 +143,7 @@ if mode == 'train':
     eps = 0
     total_R = 0
     avg_Q = 0
-    avg_maxQ = 0
-    loss = 0
-    trainTime = 0
+    max_Q = 0
     
     memory = Memory(memorySize=memory_replay)
     # TODO: Implement Prioritized Experience Replay: 
@@ -154,13 +151,14 @@ if mode == 'train':
 
     while t < nb_steps:
         # Initialize outputs
+        loss = 0
         if t == warmup:
-            eps = 0
+            eps = 1
         
         # Select an action a and save q value
         q = model.predict(state_t)
-        avg_maxQ += np.max(q)
-        avg_Q += np.mean(q)
+        #avg_maxQ += np.max(q)
+        #avg_Q += np.mean(q)
         
         if np.random.uniform() <= epsilon:
             action = np.random.random_integers(0, nb_actions-1)
@@ -205,6 +203,7 @@ if mode == 'train':
                 else:
                     qTarget = target_model.predict(ss_t1)
                     max_Q = np.max(qTarget)
+                    avg_Q = np.mean(qTarget)
                     tt = rr + gamma*max_Q
                 
                     targets[i, aa] = tt
@@ -215,19 +214,19 @@ if mode == 'train':
             target_model.set_weights(model.get_weights())
         
         t += 1
-        trainTime += 1
+        #trainTime += 1
         state_t = state_t1
         
         # Save weights and output periodically
         if (eps % saveweights == 0 and t > warmup):
-            print("Time", t, "Eps", eps, "Loss ", '%.2E' % loss/trainTime,
-                  "Avg Max Q", avg_maxQ/trainTime, "Avg Q", avg_Q/trainTime,
-                  "Avg R", total_R/saveweights)
+            print("Time", t, "Eps", eps,
+                  #"Train time", trainTime,
+                  "Loss ", '%.2E' % loss,
+                  "Max Q", '%.2E' % max_Q,
+                  "Avg Q", '%.2E' % avg_Q,
+                  "Total R", total_R)
             total_R = 0
-            avg_Q = 0
-            loss = 0
-            avg_maxQ = 0
-            trainTime = 0
+            #trainTime = 0
             
             model.save_weights('{3}/dqn_{0}_RAM_{1}_{2}.h5f'.format(
                 ENV_NAME, opt, t, output), overwrite=True)
