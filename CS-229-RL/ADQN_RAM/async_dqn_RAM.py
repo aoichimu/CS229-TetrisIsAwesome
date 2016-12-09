@@ -259,9 +259,9 @@ def train(session, graph_ops, num_actions, saver):
     # Show the agents training and write summary statistics
     last_summary_time = 0
     while True:
-        #if FLAGS.show_training:
-         #   for env in envs:
-         #       env.render()
+        if FLAGS.show_training:
+            for env in envs:
+                env.render()
         now = time.time()
         if now - last_summary_time > FLAGS.summary_interval:
             summary_str = session.run(summary_op)
