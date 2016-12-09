@@ -144,7 +144,7 @@ def actor_learner_thread(thread_id, env, session, graph_ops, num_actions, summar
             # Optionally update target network
             if T % FLAGS.target_network_update_frequency == 0:
                 session.run(reset_target_network_params)
-                    
+    
             # Optionally update online network
             if t % FLAGS.network_update_frequency == 0 or terminal:
                 if s_batch:
@@ -241,7 +241,7 @@ def train(session, graph_ops, num_actions, saver):
     summary_op = summary_ops[-1]
 
     # Initialize variables
-    session.run(tf.initialize_all_variables())
+    session.run(tf.global_variables_initializer())
     summary_save_path = FLAGS.summary_dir + "/" + FLAGS.experiment
     writer = tf.train.SummaryWriter(summary_save_path, session.graph)
     if not os.path.exists(FLAGS.checkpoint_dir):
@@ -300,11 +300,12 @@ def main(_):
     num_actions = get_num_actions()
     graph_ops = build_graph(num_actions)
     saver = tf.train.Saver()
-
+    #session.run(tf.initialize_all_variables())
+    session.run(tf.global_variables_initializer())
     if FLAGS.testing:
         evaluation(session, graph_ops, saver)
     else:
         train(session, graph_ops, num_actions, saver)
 
 if __name__ == "__main__":
-  tf.app.run()
+    tf.app.run()
