@@ -29,20 +29,19 @@ flags.DEFINE_float('learning_rate', 0.0001, 'Initial learning rate.')
 flags.DEFINE_float('gamma', 0.99, 'Reward discount rate.')
 flags.DEFINE_float('epsilon_test', 0.005, 'epsilon for testing.')
 flags.DEFINE_integer('anneal_epsilon_timesteps', 1000000, 'Number of timesteps to anneal epsilon.')
-flags.DEFINE_string('summary_dir', 'summaries', 'Directory for storing tensorboard summaries')
-flags.DEFINE_string('checkpoint_dir', 'checkpoints', 'Directory for storing model checkpoints')
+flags.DEFINE_string('summary_dir', './summaries', 'Directory for storing tensorboard summaries')
+flags.DEFINE_string('checkpoint_dir', './checkpoints', 'Directory for storing model checkpoints')
 flags.DEFINE_integer('summary_interval', 5,
                      'Save training summary to file every n seconds (rounded '
                      'up to statistics interval.')
 flags.DEFINE_integer('checkpoint_interval', 600,
                      'Checkpoint the model (i.e. save the parameters) every n '
                      'seconds (rounded up to statistics interval.')
-flags.DEFINE_boolean('show_training', False, 'If true, have gym render evironments during training')
+flags.DEFINE_boolean('show_training', True, 'If true, have gym render evironments during training')
 flags.DEFINE_boolean('testing', False, 'If true, run gym evaluation')
-flags.DEFINE_string('checkpoint_path', 'checkpoints/breakout_RAM^C-game.ckpt-132600', 'Path to recent checkpoint to use for evaluation')
-flags.DEFINE_string('eval_dir', 'BREAKOUT', 'Directory to store gym evaluation')
+flags.DEFINE_string('checkpoint_path', 'path/to/recent.ckpt', 'Path to recent checkpoint to use for evaluation')
+flags.DEFINE_string('eval_dir', './evals', 'Directory to store gym evaluation')
 flags.DEFINE_integer('num_eval_episodes', 100, 'Number of episodes to run gym evaluation.')
-FLAGS = flags.FLAGS
 T = 0
 TMAX = FLAGS.tmax
 
@@ -71,7 +70,7 @@ def actor_learner_thread(thread_id, env, session, graph_ops, num_actions, summar
     a = graph_ops["a"]
     y = graph_ops["y"]
     grad_update = graph_ops["grad_update"]
-
+    cost = graph_ops["cost"]
     summary_placeholders, update_ops, summary_op = summary_ops
 
     # Wrap env with AtariEnvironment helper class
@@ -99,7 +98,8 @@ def actor_learner_thread(thread_id, env, session, graph_ops, num_actions, summar
         ep_reward = 0
         episode_ave_max_q = 0
         ep_t = 0
-
+        total_loss=0
+        
         while True:
             # Forward the deep q network, get Q(s,a) values
             readout_t = q_values.eval(session = session, feed_dict = {s : [s_t]})
@@ -147,9 +147,10 @@ def actor_learner_thread(thread_id, env, session, graph_ops, num_actions, summar
             # Optionally update online network
             if t % FLAGS.network_update_frequency == 0 or terminal:
                 if s_batch:
-                    session.run(grad_update, feed_dict = {y : y_batch,
+                    loss, _ = session.run([cost, grad_update], feed_dict = {y : y_batch,
                                                           a : a_batch,
                                                           s : s_batch})
+                    total_loss += loss
                 # Clear gradients
                 s_batch = []
                 a_batch = []
@@ -161,10 +162,10 @@ def actor_learner_thread(thread_id, env, session, graph_ops, num_actions, summar
     
             # Print end of episode stats
             if terminal:
-                stats = [ep_reward, episode_ave_max_q/float(ep_t), epsilon]
+                stats = [ep_reward, episode_ave_max_q/float(ep_t), epsilon, total_loss/float(ep_t)]
                 for i in range(len(stats)):
                     session.run(update_ops[i], feed_dict={summary_placeholders[i]:float(stats[i])})
-                print "THREAD:", thread_id, "/ TIME", T, "/ TIMESTEP", t, "/ EPSILON", epsilon, "/ REWARD", ep_reward, "/ Q_MAX %.4f" % (episode_ave_max_q/float(ep_t)), "/ EPSILON PROGRESS", t/float(FLAGS.anneal_epsilon_timesteps)
+                print "THREAD:", thread_id, "/ TIME", T, "/ TIMESTEP", t, "/ EPSILON", epsilon, "/ REWARD", ep_reward, "/ Q_MAX %.4f" % (episode_ave_max_q/float(ep_t)), "/ EPSILON PROGRESS", t/float(FLAGS.anneal_epsilon_timesteps), "/ AVERAGE LOSS",  total_loss/float(ep_t)
                 break
 
 def build_graph(num_actions):
@@ -196,6 +197,7 @@ def build_graph(num_actions):
                  "reset_target_network_params" : reset_target_network_params,
                  "a" : a,
                  "y" : y,
+                 "cost" : cost,
                  "grad_update" : grad_update}
 
     return graph_ops
@@ -203,13 +205,15 @@ def build_graph(num_actions):
 # Set up some episode summary ops to visualize on tensorboard.
 def setup_summaries():
     episode_reward = tf.Variable(0.)
-    tf.scalar_summary("Episode Reward", episode_reward)
+    tf.scalar_summary(FLAGS.game + ": Episode Reward", episode_reward)
     episode_ave_max_q = tf.Variable(0.)
-    tf.scalar_summary("Max Q Value", episode_ave_max_q)
+    tf.scalar_summary(FLAGS.game + ": Max Q Value", episode_ave_max_q)
     logged_epsilon = tf.Variable(0.)
-    tf.scalar_summary("Epsilon", logged_epsilon)
+    tf.scalar_summary(FLAGS.game + ": Epsilon", logged_epsilon)
+    episode_avg_loss = tf.Variable(0.)
+    tf.scalar_summary(FLAGS.game + ": Average Episode Loss", episode_avg_loss)
     logged_T = tf.Variable(0.)
-    summary_vars = [episode_reward, episode_ave_max_q, logged_epsilon]
+    summary_vars = [episode_reward, episode_ave_max_q, logged_epsilon, episode_avg_loss]
     summary_placeholders = [tf.placeholder("float") for i in range(len(summary_vars))]
     update_ops = [summary_vars[i].assign(summary_placeholders[i]) for i in range(len(summary_vars))]
     summary_op = tf.merge_all_summaries()
@@ -254,9 +258,9 @@ def train(session, graph_ops, num_actions, saver):
     # Show the agents training and write summary statistics
     last_summary_time = 0
     while True:
-        if FLAGS.show_training:
-            for env in envs:
-                env.render()
+        #if FLAGS.show_training:
+         #   for env in envs:
+         #       env.render()
         now = time.time()
         if now - last_summary_time > FLAGS.summary_interval:
             summary_str = session.run(summary_op)

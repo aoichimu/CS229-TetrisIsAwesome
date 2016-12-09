@@ -38,7 +38,7 @@ flags.DEFINE_integer('summary_interval', 5,
 flags.DEFINE_integer('checkpoint_interval', 600,
                      'Checkpoint the model (i.e. save the parameters) every n '
                      'seconds (rounded up to statistics interval.')
-flags.DEFINE_boolean('show_training', False, 'If true, have gym render evironments during training')
+flags.DEFINE_boolean('show_training', True, 'If true, have gym render evironments during training')
 flags.DEFINE_boolean('testing', False, 'If true, run gym evaluation')
 flags.DEFINE_string('checkpoint_path', 'path/to/recent.ckpt', 'Path to recent checkpoint to use for evaluation')
 flags.DEFINE_string('eval_dir', './evals', 'Directory to store gym evaluation')
@@ -169,7 +169,7 @@ def actor_learner_thread(thread_id, env, session, graph_ops, num_actions, summar
                 stats = [ep_reward, episode_ave_max_q/float(ep_t), epsilon, total_loss/float(ep_t)]
                 for i in range(len(stats)):
                     session.run(update_ops[i], feed_dict={summary_placeholders[i]:float(stats[i])})
-                print "THREAD:", thread_id, "/ TIME", T, "/ TIMESTEP", t, "/ EPSILON", epsilon, "/ REWARD", ep_reward, "/ Q_MAX %.4f" % (episode_ave_max_q/float(ep_t)), "/ EPSILON PROGRESS", t/float(FLAGS.anneal_epsilon_timesteps), "/ AVERAGE LOSS %.5E",  total_loss/float(ep_t)
+                print "THREAD:", thread_id, "/ TIME", T, "/ TIMESTEP", t, "/ EPSILON", epsilon, "/ REWARD", ep_reward, "/ Q_MAX %.4f" % (episode_ave_max_q/float(ep_t)), "/ EPSILON PROGRESS", t/float(FLAGS.anneal_epsilon_timesteps), "/ AVERAGE LOSS",  total_loss/float(ep_t)
                 break
 
 def build_graph(num_actions):
