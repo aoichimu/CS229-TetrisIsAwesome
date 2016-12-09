@@ -20,7 +20,7 @@ parser.add_argument('-net','--net', help='Network architecture', default='2',
                     required=False)
 parser.add_argument('-opt','--opt', help='Optimizer', default='adam',
                     required=False)
-parser.add_argument('-ouput','--output', help='Output folder', default='output',
+parser.add_argument('-output','--output', help='Output folder', default='output',
                     required=False)
 parser.add_argument('-mode','--mode', help='Mode', default='train',
                     required=False)
@@ -81,7 +81,7 @@ memory_replay = 100000 # number of previous transitions to remember
 batch_size = 32 # size of minibatch
 nb_steps = 5000000
 train_visualize = False
-saveweights=100
+saveweights=10000
 update_target = 1
 frameskip = 'F'
 nodesperlayer=128
@@ -218,15 +218,13 @@ if mode == 'train':
         state_t = state_t1
         
         # Save weights and output periodically
-        if (eps % saveweights == 0 and t > warmup):
+        if (t % saveweights == 0 and t > warmup):
             print("Time", t, "Eps", eps,
-                  #"Train time", trainTime,
                   "Loss ", '%.2E' % loss,
                   "Max Q", '%.2E' % max_Q,
                   "Avg Q", '%.2E' % avg_Q,
                   "Total R", total_R)
             total_R = 0
-            #trainTime = 0
             
             model.save_weights('{3}/dqn_{0}_RAM_{1}_{2}.h5f'.format(
                 ENV_NAME, opt, t, output), overwrite=True)
