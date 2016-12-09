@@ -32,7 +32,7 @@ parser.add_argument('-opt','--opt', help='Optimizer', default='rms',
                     required=False)
 parser.add_argument('-threads','--threads', help='Threads', default='1',
                     type = int, required=False)
-parser.add_argument('-ouput','--output', help='Output folder', default='output',
+parser.add_argument('-output','--output', help='Output folder', default='output',
                     required=False)
 parser.add_argument('-mode','--mode', help='Mode', default='train',
                     required=False)
