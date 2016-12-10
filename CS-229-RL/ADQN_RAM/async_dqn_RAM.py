@@ -42,6 +42,7 @@ flags.DEFINE_boolean('testing', False, 'If true, run gym evaluation')
 flags.DEFINE_string('checkpoint_path', 'path/to/recent.ckpt', 'Path to recent checkpoint to use for evaluation')
 flags.DEFINE_string('eval_dir', './evals', 'Directory to store gym evaluation')
 flags.DEFINE_integer('num_eval_episodes', 100, 'Number of episodes to run gym evaluation.')
+flags.DEFINE_integer('network', 1, 'Network architecture')
 FLAGS = flags.FLAGS
 T = 0
 TMAX = FLAGS.tmax
@@ -171,12 +172,12 @@ def actor_learner_thread(thread_id, env, session, graph_ops, num_actions, summar
 
 def build_graph(num_actions):
     # Create shared deep q network
-    s, q_network = build_network(num_actions=num_actions)
+    s, q_network = build_network(num_actions=num_actions, FLAGS.network)
     network_params = q_network.trainable_weights
     q_values = q_network(s)
 
     # Create shared target network
-    st, target_q_network = build_network(num_actions=num_actions)
+    st, target_q_network = build_network(num_actions=num_actions, FLAGS.network)
     target_network_params = target_q_network.trainable_weights
     target_q_values = target_q_network(st)
 
