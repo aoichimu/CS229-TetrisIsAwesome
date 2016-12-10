@@ -14,6 +14,7 @@ def build_network(num_actions, network):
       m = Model(input=inputs, output=q_values)
     return state, m
   elif network == 2:
+    print "using network with 2 layers, 128 nodes"
     with tf.device("/cpu:0"):
       state = tf.placeholder("float", [None, 128])
       inputs = Input(shape=(128,))
@@ -23,6 +24,7 @@ def build_network(num_actions, network):
       m = Model(input=inputs, output=q_values)
     return state, m
   elif network == 3:
+    print "using network with 3 layers, 256 nodes"
     with tf.device("/cpu:0"):
       state = tf.placeholder("float", [None, 128])
       inputs = Input(shape=(128,))
@@ -33,6 +35,7 @@ def build_network(num_actions, network):
       m = Model(input=inputs, output=q_values)
     return state, m
   elif network == 4:
+    print "using network with 3 layers, 128 nodes"
     with tf.device("/cpu:0"):
       state = tf.placeholder("float", [None, 128])
       inputs = Input(shape=(128,))
@@ -43,6 +46,7 @@ def build_network(num_actions, network):
       m = Model(input=inputs, output=q_values)
     return state, m
   elif network == 5:
+    print "using network with 4 layers, 256 nodes"
     with tf.device("/cpu:0"):
       state = tf.placeholder("float", [None, 128])
       inputs = Input(shape=(128,))
@@ -54,6 +58,7 @@ def build_network(num_actions, network):
       m = Model(input=inputs, output=q_values)
     return state, m
   else:
+    print "using network with 4 layers, 128 nodes"
     with tf.device("/cpu:0"):
       state = tf.placeholder("float", [None, 128])
       inputs = Input(shape=(128,))

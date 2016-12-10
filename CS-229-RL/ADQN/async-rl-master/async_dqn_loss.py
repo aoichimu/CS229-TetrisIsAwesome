@@ -38,7 +38,7 @@ flags.DEFINE_integer('summary_interval', 5,
 flags.DEFINE_integer('checkpoint_interval', 600,
                      'Checkpoint the model (i.e. save the parameters) every n '
                      'seconds (rounded up to statistics interval.')
-flags.DEFINE_boolean('show_training', True, 'If true, have gym render evironments during training')
+flags.DEFINE_boolean('show_training', False, 'If true, have gym render evironments during training')
 flags.DEFINE_boolean('testing', False, 'If true, run gym evaluation')
 flags.DEFINE_string('checkpoint_path', 'path/to/recent.ckpt', 'Path to recent checkpoint to use for evaluation')
 flags.DEFINE_string('eval_dir', './evals', 'Directory to store gym evaluation')
