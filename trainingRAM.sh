@@ -16,4 +16,4 @@
 CS229_dir="/farmshare/user_data/jiaming/CS229-TetrisIsAwesome/CS-229-RL/ADQN_RAM/"
 cd ${CS229_dir}
 
-python async_dqn_RAM.py --experiment ${exp} --num_concurrent ${threads}
+python async_dqn_RAM.py --experiment ${exp} --num_concurrent ${threads} --game ${game}
