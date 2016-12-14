@@ -13,7 +13,7 @@
 #$ -m ae
 #
 ##Computer parameters 
-CS229_dir="/farmshare/user_data/edgard/CS229-TetrisIsAwesome/PAPER_TEST/Boltz_2/"
+CS229_dir="/farmshare/user_data/edgard/CS229-TetrisIsAwesome/PAPER/Boltz_2/"
 cd ${CS229_dir}
 
 #python Boltz-f=1/async_dqn_RAM_Boltzmann.py
