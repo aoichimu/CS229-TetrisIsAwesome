@@ -1,0 +1,2 @@
+model_checkpoint_path: "FINAL_dqn_breakout_RAM.ckpt-0"
+all_model_checkpoint_paths: "FINAL_dqn_breakout_RAM.ckpt-0"
