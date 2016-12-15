@@ -221,7 +221,8 @@ def actor_learner_thread(thread_id, env, session, graph_ops, num_actions, summar
             if terminal:
                 stats = [ep_reward, episode_ave_max_q/float(ep_t), tau, total_loss/float(ep_t)]
                 for i in range(len(stats)):
-                    session.run(update_ops[i], feed_dict={summary_placeholders[i]:float(stats[i])})               if t%5==0:
+                    session.run(update_ops[i], feed_dict={summary_placeholders[i]:float(stats[i])}) 
+                if t%5==0:
                     print "THREAD:", thread_id, "/ TIME", T, "/ TIMESTEP", t, "/ EPSILON", epsilon, "/ REWARD", ep_reward, "/ Q_MAX %.4f" % (episode_ave_max_q/float(ep_t)), "/ EPSILON PROGRESS", t/float(FLAGS.anneal_epsilon_timesteps), "/ AVERAGE LOSS",  total_loss/float(ep_t)
                 break
 
