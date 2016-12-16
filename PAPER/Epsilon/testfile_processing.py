@@ -5,6 +5,8 @@ import numpy as np
 
 #test_filename = "TESTFORTEST.txt"
 
+cut_factor=1
+
 def list_checkpoints(checkpoints_dir):
     """
     Retrieves the list of checkpoints available for testing
@@ -16,7 +18,7 @@ def list_checkpoints(checkpoints_dir):
     for filename in os.listdir(checkpoints_dir):
         if (filename.endswith(".meta")) and filename.startswith("dqn_breakout_RAM.ckpt-"):
             #print(os.path.join("../Testing_Algorithm/checkpoints", filename))
-            chopped_name=filename.replace(".meta",""))
+            chopped_name=filename.replace(".meta","")
             T=np.int(chopped_name.replace("dqn_breakout_RAM.ckpt-",""))
             iterations.append(T)
             paths.append(chopped_name)
@@ -29,7 +31,7 @@ def list_checkpoints(checkpoints_dir):
     sorted_iterations=[x[0] for x in sort_list]
     sorted_paths=[x[1] for x in sort_list]
 
-    return sorted_iterations, sorted_paths
+    return sorted_iterations[::cut_factor], sorted_paths[::cut_factor]
     
 def last_test(test_filename):
     """

@@ -5,7 +5,7 @@ import numpy as np
 
 #test_filename = "TESTFORTEST.txt"
 
-cut_factor=4
+cut_factor=1
 
 def list_checkpoints(checkpoints_dir):
     """

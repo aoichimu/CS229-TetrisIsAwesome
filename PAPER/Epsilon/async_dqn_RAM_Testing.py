@@ -3,7 +3,7 @@ import os
 os.environ["KERAS_BACKEND"] = "tensorflow"
 
 from testfile_processing import get_testing_data
-from atari_environment_RAM import AtariEnvironment
+from atari_environment_RAM_test import AtariEnvironment
 import threading
 import tensorflow as tf
 import sys
@@ -380,7 +380,7 @@ def statistics(session, graph_ops, num_actions, saver):
         for t in range(num_tests):
         
             saver.restore(session, FLAGS.checkpoint_dir+'/'+paths[t])
-            print "Restored model weights from ", FLAGS.checkpoint_path +'/' +paths[t]
+            print "Restored model weights from ", FLAGS.checkpoint_dir +'/' +paths[t]
             monitor_env = gym.make(FLAGS.game)
             
             # Unpack graph ops
@@ -399,7 +399,7 @@ def statistics(session, graph_ops, num_actions, saver):
                 terminal = False
                 
                 while not terminal:
-                    monitor_env.render()
+                    #monitor_env.render()
                     readout_t = q_values.eval(session = session, feed_dict = {s : [s_t]})
                     #print np.max(readout_t)
                     if random.random() <= epsilon:
