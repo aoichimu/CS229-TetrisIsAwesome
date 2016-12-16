@@ -5,15 +5,15 @@
 #
 #Log File
 #$ -j y
-#$ -o /farmshare/user_data/edgard/Logs/
-#$ -e /farmshare/user_data/edgard/Logs/
+#$ -o /farmshare/user_data/jiaming/Logs/
+#$ -e /farmshare/user_data/jiaming/Logs/
 #
 #Send an e-mail to edgard when job is aborted
-#$ -M edgard@stanford.edu
+#$ -M jiaming@stanford.edu
 #$ -m ae
 #
 ##Computer parameters 
-CS229_dir="/farmshare/user_data/edgard/CS229-TetrisIsAwesome/PAPER/BoltzQ1/"
+CS229_dir="/farmshare/user_data/jiaming/CS229-TetrisIsAwesome/Tests_for_Barley/BoltzQ1/"
 cd ${CS229_dir}
 
 python async_dqn_RAM_Boltzmann.py
