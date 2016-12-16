@@ -1,2 +1,2 @@
-model_checkpoint_path: "dqn_breakout_RAM.ckpt-35741601"
-all_model_checkpoint_paths: "dqn_breakout_RAM.ckpt-35741601"
+model_checkpoint_path: "dqn_breakout_RAM.ckpt-54718955"
+all_model_checkpoint_paths: "dqn_breakout_RAM.ckpt-54718955"
